@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export default function App() {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [activeStepId, setActiveStepId] = useState('createPlan');
     const [checkedSteps, setCheckedSteps] = useState({
         createPlan: true,
         productPages: false,
@@ -17,15 +18,18 @@ export default function App() {
             title: 'Create your first subscription plan',
             description:
                 'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
-            highlighted: true,
         },
         {
             id: 'productPages',
             title: 'Add subscriptions to product pages',
+            description:
+                'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
         },
         {
             id: 'manageSubscriptions',
             title: 'Allow customers to manage subscriptions',
+            description:
+                'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
         },
         {
             id: 'accountAccess',
@@ -120,7 +124,7 @@ export default function App() {
                                             key={step.id}
                                             className={[
                                                 'rounded-2xl px-3 py-1 sm:px-4',
-                                                step.highlighted ? 'bg-[#f6f6f7]' : 'bg-transparent',
+                                                activeStepId === step.id ? 'bg-[#f6f6f7]' : 'bg-transparent',
                                             ].join(' ')}
                                         >
                                             <label
@@ -136,11 +140,15 @@ export default function App() {
                                                 />
 
                                                 <div className="min-w-0 flex-1">
-                                                    <h3 className="text-[1.00rem] py-0 my-0 font-semibold text-[#111827]">
+                                                    <button
+                                                        type="button"
+                                                        className="py-0 my-0 text-left text-[1rem] font-semibold text-[#111827]"
+                                                        onClick={() => setActiveStepId(step.id)}
+                                                    >
                                                         {step.title}
-                                                    </h3>
+                                                    </button>
 
-                                                    {step.description ? (
+                                                    {step.description && activeStepId === step.id ? (
                                                         <>
                                                             <p className="mt-2 max-w-3xl py-0 my-0 text-[0.98rem] leading-7 text-[#4b5563]">
                                                                 {step.description}
