@@ -1,11 +1,419 @@
-@import 'tailwindcss';
+:root {
+    color-scheme: light;
+    --app-background: #f6f6f7;
+    --surface: #ffffff;
+    --surface-muted: #f1f2f3;
+    --surface-strong: #111827;
+    --border: #d9dadd;
+    --text: #202223;
+    --text-muted: #616161;
+    --accent: #008060;
+    --accent-soft: #e3f1df;
+    --shadow: 0 1px 2px rgba(10, 10, 10, 0.08);
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--app-background);
+    color: var(--text);
+    font-family: var(--font-sans);
+}
+
+a,
+button {
+    font: inherit;
+}
+
+button {
+    border: 0;
+    background: none;
+    color: inherit;
+}
+
+.app-shell {
+    width: min(1080px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0 40px;
+}
+
+.hero-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(0, 128, 96, 0.12), transparent 34%),
+        linear-gradient(135deg, #ffffff, #f7f8f8);
+    box-shadow: var(--shadow);
+    padding: 30px;
+}
+
+.hero-card__content {
+    max-width: 680px;
+}
+
+.hero-card__eyebrow {
+    display: inline-flex;
+    margin-bottom: 10px;
+    border-radius: 999px;
+    background: #edf6f3;
+    padding: 6px 12px;
+    color: #0b6b50;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.hero-card h1 {
+    margin: 0;
+    font-size: 36px;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+}
+
+.hero-card p {
+    margin: 12px 0 0;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.hero-card__badge {
+    flex: 0 0 auto;
+    border: 1px solid #c7e7dd;
+    border-radius: 999px;
+    background: #f7fffc;
+    padding: 10px 14px;
+    color: #0b6b50;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 22px;
+}
+
+.summary-card,
+.page-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.summary-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 20px;
+}
+
+.summary-card__label {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.summary-card__value {
+    font-size: 32px;
+    font-weight: 750;
+    letter-spacing: -0.04em;
+}
+
+.summary-card__detail {
+    color: #0b6b50;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.page-card {
+    margin-top: 22px;
+    padding: 22px;
+}
+
+.page-card__header,
+.settings-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.page-card__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.page-card__subtitle {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.progress-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.progress-track {
+    overflow: hidden;
+    width: 88px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e3e5e7;
+}
+
+.progress-track__value {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #202223;
+}
+
+.step-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.step-card {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    border-radius: var(--radius-md);
+    background: #fafbfb;
+    padding: 16px;
+}
+
+.step-card.is-complete {
+    background: #f3f8f6;
+}
+
+.step-card__marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 2px solid #a8adb3;
+    border-radius: 50%;
+    color: transparent;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.step-card.is-complete .step-card__marker {
+    border-color: #111827;
+    background: #111827;
+    color: #ffffff;
+}
+
+.step-card__body h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 650;
+}
+
+.step-card__body p {
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.primary-button,
+.secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+    padding: 0 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.primary-button {
+    background: var(--surface-strong);
+    color: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.secondary-button {
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: var(--text);
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+    transform: translateY(-1px);
+}
+
+.secondary-button--full {
+    width: 100%;
+    margin-top: 18px;
+}
+
+.data-table {
+    margin-top: 22px;
+    border: 1px solid #ececec;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.data-table__head,
+.data-table__row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 0.9fr 0.8fr 0.8fr;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+}
+
+.data-table__head--contracts,
+.data-table__row--contracts {
+    grid-template-columns: 0.9fr 1.1fr 1fr 1fr 0.8fr 0.8fr;
+}
+
+.data-table__head {
+    background: #f7f7f7;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.data-table__row {
+    border-top: 1px solid #ececec;
+    background: #ffffff;
+    font-size: 15px;
+}
+
+.data-table__row strong {
+    font-size: 15px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border-radius: 999px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-pill--is-active,
+.status-pill--is-enabled {
+    background: var(--accent-soft);
+    color: #0b6b50;
+}
+
+.status-pill--is-draft,
+.status-pill--is-branded-template,
+.status-pill--is-3-retries {
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.status-pill--is-paused {
+    background: #fff4db;
+    color: #8a6116;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 22px;
+}
+
+.settings-card {
+    margin-top: 0;
+}
+
+@media (max-width: 980px) {
+    .summary-grid,
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .step-card {
+        grid-template-columns: 28px minmax(0, 1fr);
+    }
+
+    .step-card .secondary-button {
+        grid-column: 2;
+        justify-self: flex-start;
+    }
+
+    .data-table {
+        overflow-x: auto;
+    }
+
+    .data-table__head,
+    .data-table__row {
+        min-width: 760px;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-shell {
+        width: calc(100% - 20px);
+        padding-top: 20px;
+    }
+
+    .hero-card,
+    .page-card {
+        padding: 18px;
+    }
+
+    .hero-card {
+        flex-direction: column;
+    }
+
+    .hero-card h1 {
+        font-size: 28px;
+    }
+
+    .page-card__header,
+    .settings-card__header,
+    .progress-meta {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

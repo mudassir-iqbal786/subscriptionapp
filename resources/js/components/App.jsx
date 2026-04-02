@@ -1,190 +1,357 @@
-import { useState } from 'react';
+import { TitleBar } from '@shopify/app-bridge-react';
 
-export default function App() {
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const [activeStepId, setActiveStepId] = useState('createPlan');
-    const [checkedSteps, setCheckedSteps] = useState({
-        createPlan: true,
-        productPages: false,
-        manageSubscriptions: false,
-        accountAccess: false,
-        importContracts: false,
-        customizeNotifications: false,
-    });
+const plans = [
+    {
+        id: 'starter',
+        name: 'Starter Delivery',
+        frequency: 'Every 2 weeks',
+        discount: '10% off',
+        subscribers: 34,
+        status: 'Active',
+    },
+    {
+        id: 'monthly',
+        name: 'Monthly Refill',
+        frequency: 'Every month',
+        discount: '12% off',
+        subscribers: 18,
+        status: 'Draft',
+    },
+    {
+        id: 'vip',
+        name: 'VIP Essentials',
+        frequency: 'Every 6 weeks',
+        discount: '15% off',
+        subscribers: 9,
+        status: 'Active',
+    },
+];
 
-    const guideSteps = [
-        {
-            id: 'createPlan',
-            title: 'Create your first subscription plan',
-            description:
-                'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
-        },
-        {
-            id: 'productPages',
-            title: 'Add subscriptions to product pages',
-            description:
-                'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
-        },
-        {
-            id: 'manageSubscriptions',
-            title: 'Allow customers to manage subscriptions',
-            description:
-                'Get more repeat business by allowing customers to purchase products or services on a recurring basis',
-        },
-        {
-            id: 'accountAccess',
-            title: 'Allow customer to access account post purchase',
-        },
-        {
-            id: 'importContracts',
-            title: 'Import existing contracts',
-        },
-        {
-            id: 'customizeNotifications',
-            title: 'Customize notifications',
-        },
-    ];
+const contracts = [
+    {
+        id: 'SC-1042',
+        customer: 'Ava Thompson',
+        plan: 'Starter Delivery',
+        nextOrder: 'Apr 12, 2026',
+        amount: '$48.00',
+        status: 'Active',
+    },
+    {
+        id: 'SC-1038',
+        customer: 'Noah Garcia',
+        plan: 'Monthly Refill',
+        nextOrder: 'Apr 18, 2026',
+        amount: '$72.00',
+        status: 'Paused',
+    },
+    {
+        id: 'SC-1031',
+        customer: 'Mia Ali',
+        plan: 'VIP Essentials',
+        nextOrder: 'Apr 21, 2026',
+        amount: '$96.00',
+        status: 'Active',
+    },
+];
 
-    const completedSteps = Object.values(checkedSteps).filter(Boolean).length;
+const settingsSections = [
+    {
+        id: 'portal',
+        title: 'Customer portal',
+        description: 'Allow customers to skip, reschedule, or cancel upcoming orders from their account page.',
+        value: 'Enabled',
+    },
+    {
+        id: 'notifications',
+        title: 'Email notifications',
+        description: 'Send reminders before each renewal and notify customers when a payment fails.',
+        value: 'Branded template',
+    },
+    {
+        id: 'billing',
+        title: 'Billing retries',
+        description: 'Retry failed subscription charges automatically before marking a contract as unpaid.',
+        value: '3 retries',
+    },
+];
 
-    function toggleStep(stepId) {
-        setCheckedSteps((currentSteps) => ({
-            ...currentSteps,
-            [stepId]: !currentSteps[stepId],
-        }));
+const setupSteps = [
+    {
+        id: 'plan',
+        title: 'Create your first subscription plan',
+        description: 'Set billing and delivery frequency for the products you want to sell on subscription.',
+        action: 'Create plan',
+        completed: true,
+    },
+    {
+        id: 'products',
+        title: 'Add subscriptions to product pages',
+        description: 'Show subscription options directly on product pages so customers can buy in one step.',
+        action: 'Attach products',
+        completed: true,
+    },
+    {
+        id: 'portal',
+        title: 'Allow customers to manage subscriptions',
+        description: 'Enable account access so subscribers can skip, pause, or cancel upcoming orders.',
+        action: 'Enable portal',
+        completed: false,
+    },
+    {
+        id: 'notifications',
+        title: 'Customize notifications',
+        description: 'Match renewal reminders and payment emails to your storefront branding.',
+        action: 'Edit emails',
+        completed: false,
+    },
+];
+
+const pageContent = {
+    home: {
+        title: 'Subscriptions',
+        eyebrow: 'Overview',
+        description: 'Launch subscription selling flows, monitor growth, and keep customer operations in one place.',
+    },
+    plans: {
+        title: 'Plans',
+        eyebrow: 'Subscription plans',
+        description: 'Create and manage selling plans customers can subscribe to from the storefront.',
+    },
+    contracts: {
+        title: 'Contracts',
+        eyebrow: 'Active subscriptions',
+        description: 'Review customer contracts, renewal dates, billing amounts, and contract status.',
+    },
+    settings: {
+        title: 'Settings',
+        eyebrow: 'Subscription configuration',
+        description: 'Control customer portal behavior, notification rules, and billing preferences.',
+    },
+};
+
+function normalizePath(pathname) {
+    if (pathname === '/' || pathname === '') {
+        return '/';
     }
 
+    return pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+}
+
+function getCurrentPage(pathname) {
+    const normalizedPath = normalizePath(pathname);
+
+    if (normalizedPath === '/plans') {
+        return 'plans';
+    }
+
+    if (normalizedPath === '/contracts') {
+        return 'contracts';
+    }
+
+    if (normalizedPath === '/settings') {
+        return 'settings';
+    }
+
+    return 'home';
+}
+
+function StatusPill({ status }) {
+    const statusClassName = status.toLowerCase().replace(/\s+/g, '-');
+
+    return <span className={`status-pill status-pill--is-${statusClassName}`}>{status}</span>;
+}
+
+function SummaryCard({ label, value, detail }) {
     return (
-        <main className="min-h-screen bg-[#f3f3f3] px-4 py-3text-[#111827] sm:px-6 lg:px-10">
-            <div className="mx-auto max-w-5xl">
-                <header className="mb-4">
-                    <h2 className="text-[1.60rem] font-semibold tracking-[-0.02em] text-[#1f2937]">
-                        Get started with Shopify Subscriptions
-                    </h2>
-                </header>
+        <article className="summary-card">
+            <span className="summary-card__label">{label}</span>
+            <strong className="summary-card__value">{value}</strong>
+            <span className="summary-card__detail">{detail}</span>
+        </article>
+    );
+}
 
-                <section className="overflow-hidden rounded-[18px] border border-[#d1d5db] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-start justify-between gap-4 px-5 py-4 sm:px-6">
-                        <div>
-                            <h2 className="text-[1rem] font-semibold text-[#1f2937]">Setup guide</h2>
-                            <div className="mt-2 flex items-center gap-2 text-[0.95rem] text-[#4b5563]">
-                                <input
-                                    checked={completedSteps === guideSteps.length}
-                                    className="h-4 w-3 rounded border-[#9ca3af] accent-[#1f1f1f]"
-                                    readOnly
-                                    type="checkbox"
-                                />
-                                <span>
-                                    Done {completedSteps > 0 ? `(${completedSteps}/${guideSteps.length})` : ''}
-                                </span>
+function OverviewPage() {
+    const completedSteps = setupSteps.filter((step) => step.completed).length;
+    const completionWidth = `${(completedSteps / setupSteps.length) * 100}%`;
+
+    return (
+        <>
+            <section className="summary-grid">
+                <SummaryCard label="Subscriptions revenue" value="$8,240" detail="Last 30 days" />
+                <SummaryCard label="Active subscriptions" value="61" detail="Across 3 plans" />
+                <SummaryCard label="Renewals due" value="12" detail="Next 7 days" />
+            </section>
+
+            <section className="page-card">
+                <div className="page-card__header">
+                    <div>
+                        <h2 className="page-card__title">Setup guide</h2>
+                        <div className="progress-meta">
+                            <span>
+                                {completedSteps} / {setupSteps.length} completed
+                            </span>
+                            <div aria-hidden="true" className="progress-track">
+                                <span className="progress-track__value" style={{ width: completionWidth }} />
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 pt-1 text-[#6b7280]">
-                            <button
-                                type="button"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-[#f3f4f6]"
-                                aria-label="More options"
-                            >
-                                <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M4.5 10a1.5 1.5 0 1 1 0.001-3.001A1.5 1.5 0 0 1 4.5 10Zm5.5 0A1.5 1.5 0 1 1 10.001 6.999 1.5 1.5 0 0 1 10 10Zm5.5 0a1.5 1.5 0 1 1 0.001-3.001A1.5 1.5 0 0 1 15.5 10Z" />
-                                </svg>
-                            </button>
-                            <button
-                                type="button"
-                                className="inline-flex h-8 w-4 items-center justify-center rounded-full transition hover:bg-[#f3f4f6]"
-                                aria-label="Collapse guide"
-                                aria-expanded={!isCollapsed}
-                                onClick={() => setIsCollapsed((currentState) => !currentState)}
-                            >
-                                <svg
-                                    aria-hidden="true"
-                                    className={`h-5 w-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
-                                    viewBox="0 0 20 20"
-                                    fill="none"
-                                >
-                                    <path
-                                        d="M6 12L10 8L14 12"
-                                        stroke="currentColor"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="1.8"
-                                    />
-                                </svg>
-                            </button>
                         </div>
                     </div>
+                    <button className="secondary-button" type="button">
+                        View checklist
+                    </button>
+                </div>
 
-                    {!isCollapsed ? (
-                        <>
-                            <div className="border-t border-[#e5e7eb] px-2 py-4 sm:px-4 sm:py-5">
-                                <div className="space-y-2">
-                                    {guideSteps.map((step) => (
-                                        <article
-                                            key={step.id}
-                                            className={[
-                                                'rounded-2xl px-3 py-1 sm:px-4',
-                                                activeStepId === step.id ? 'bg-[#f6f6f7]' : 'bg-transparent',
-                                            ].join(' ')}
-                                        >
-                                            <label
-                                                className={`flex cursor-pointer gap-3 ${
-                                                    step.description ? 'items-start' : 'items-center'
-                                                }`}
-                                            >
-                                                <input
-                                                    checked={checkedSteps[step.id]}
-                                                    className="mt-0.5 h-3 w-3   border-[#9ca3af] accent-[#1f1f1f]"
-                                                    onChange={() => toggleStep(step.id)}
-                                                    type="checkbox"
-                                                />
-
-                                                <div className="min-w-0 flex-1">
-                                                    <button
-                                                        type="button"
-                                                        className="py-0 my-0 text-left text-[1rem] font-semibold text-[#111827]"
-                                                        onClick={() => setActiveStepId(step.id)}
-                                                    >
-                                                        {step.title}
-                                                    </button>
-
-                                                    {step.description && activeStepId === step.id ? (
-                                                        <>
-                                                            <p className="mt-2 max-w-3xl py-0 my-0 text-[0.98rem] leading-7 text-[#4b5563]">
-                                                                {step.description}
-                                                            </p>
-                                                            <button
-                                                                type="button"
-                                                                className="mt-4 inline-flex items-center rounded-xl border border-[#1f1f1f] bg-[#2b2b2b] px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:bg-black"
-                                                            >
-                                                                Create plan
-                                                            </button>
-                                                        </>
-                                                    ) : null}
-                                                </div>
-                                            </label>
-                                        </article>
-                                    ))}
-                                </div>
+                <div className="step-list">
+                    {setupSteps.map((step) => (
+                        <article className={`step-card${step.completed ? ' is-complete' : ''}`} key={step.id}>
+                            <div className="step-card__marker" aria-hidden="true">
+                                {step.completed ? 'OK' : ''}
                             </div>
+                            <div className="step-card__body">
+                                <h3>{step.title}</h3>
+                                <p>{step.description}</p>
+                            </div>
+                            <button className="secondary-button" type="button">
+                                {step.action}
+                            </button>
+                        </article>
+                    ))}
+                </div>
+            </section>
+        </>
+    );
+}
 
-                            <footer className="flex flex-col gap-4 border-t border-[#eceef0] bg-[#fafafa] px-5 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-6">
-                                <button
-                                    type="button"
-                                    className="inline-flex items-center justify-center self-end rounded-xl border border-[#d1d5db] bg-white px-4 py-2 text-sm font-semibold text-[#374151] shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:bg-[#f9fafb]"
-                                >
-                                    Dismiss guide
-                                </button>
-                            </footer>
-                        </>
-                    ) : null}
+function PlansPage() {
+    return (
+        <section className="page-card">
+            <div className="page-card__header">
+                <div>
+                    <h2 className="page-card__title">Selling plans</h2>
+                    <p className="page-card__subtitle">Create offers for prepaid, pay-as-you-go, or curated bundles.</p>
+                </div>
+                <button className="primary-button" type="button">
+                    Create plan
+                </button>
+            </div>
+
+            <div className="data-table">
+                <div className="data-table__head">
+                    <span>Plan name</span>
+                    <span>Frequency</span>
+                    <span>Discount</span>
+                    <span>Subscribers</span>
+                    <span>Status</span>
+                </div>
+
+                {plans.map((plan) => (
+                    <article className="data-table__row" key={plan.id}>
+                        <strong>{plan.name}</strong>
+                        <span>{plan.frequency}</span>
+                        <span>{plan.discount}</span>
+                        <span>{plan.subscribers}</span>
+                        <StatusPill status={plan.status} />
+                    </article>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function ContractsPage() {
+    return (
+        <section className="page-card">
+            <div className="page-card__header">
+                <div>
+                    <h2 className="page-card__title">Customer contracts</h2>
+                    <p className="page-card__subtitle">Track renewals, customer plan changes, and paused contracts.</p>
+                </div>
+                <button className="secondary-button" type="button">
+                    Export contracts
+                </button>
+            </div>
+
+            <div className="data-table">
+                <div className="data-table__head data-table__head--contracts">
+                    <span>Contract</span>
+                    <span>Customer</span>
+                    <span>Plan</span>
+                    <span>Next order</span>
+                    <span>Amount</span>
+                    <span>Status</span>
+                </div>
+
+                {contracts.map((contract) => (
+                    <article className="data-table__row data-table__row--contracts" key={contract.id}>
+                        <strong>{contract.id}</strong>
+                        <span>{contract.customer}</span>
+                        <span>{contract.plan}</span>
+                        <span>{contract.nextOrder}</span>
+                        <span>{contract.amount}</span>
+                        <StatusPill status={contract.status} />
+                    </article>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function SettingsPage() {
+    return (
+        <div className="settings-grid">
+            {settingsSections.map((section) => (
+                <section className="page-card settings-card" key={section.id}>
+                    <div className="settings-card__header">
+                        <div>
+                            <h2 className="page-card__title">{section.title}</h2>
+                            <p className="page-card__subtitle">{section.description}</p>
+                        </div>
+                        <StatusPill status={section.value} />
+                    </div>
+                    <button className="secondary-button secondary-button--full" type="button">
+                        Edit setting
+                    </button>
+                </section>
+            ))}
+        </div>
+    );
+}
+
+export default function App() {
+    const currentPage = getCurrentPage(window.location.pathname);
+    const currentPageContent = pageContent[currentPage];
+
+    return (
+        <>
+            <s-app-nav>
+                <s-link href="/plans">Plans</s-link>
+                <s-link href="/contracts">Contracts</s-link>
+                <s-link href="/settings">Settings</s-link>
+            </s-app-nav>
+
+            <TitleBar title={currentPageContent.title}>
+                {currentPage !== 'home' ? (
+                    <a href="/" variant="breadcrumb">
+                        Subscriptions
+                    </a>
+                ) : null}
+            </TitleBar>
+
+            <main className="app-shell">
+                <section className="hero-card">
+                    <div className="hero-card__content">
+                        <span className="hero-card__eyebrow">{currentPageContent.eyebrow}</span>
+                        <h1>{currentPageContent.title}</h1>
+                        <p>{currentPageContent.description}</p>
+                    </div>
+                    <div className="hero-card__badge">Shopify App Bridge</div>
                 </section>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[0.98rem] text-[#6b7280]">
-                    <span className="font-semibold text-[#111827]">Performance</span>
-                    <span>Mar 26-Apr 2, 2026</span>
-                </div>
-            </div>
-        </main>
+                {currentPage === 'plans' ? <PlansPage /> : null}
+                {currentPage === 'contracts' ? <ContractsPage /> : null}
+                {currentPage === 'settings' ? <SettingsPage /> : null}
+                {currentPage === 'home' ? <OverviewPage /> : null}
+            </main>
+        </>
     );
 }
