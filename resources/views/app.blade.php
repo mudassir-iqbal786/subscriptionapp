@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="shopify-api-key" content="{{ config('shopify-app.api_key') }}">
     <title>{{ config('app.name', 'Shopify App') }}</title>
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
@@ -13,5 +14,7 @@
 
 <body>
 <div id="app"></div>
+
+@include('shopify-app::partials.token_handler')
 </body>
 </html>

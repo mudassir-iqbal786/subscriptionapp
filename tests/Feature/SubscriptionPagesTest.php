@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Osiset\ShopifyApp\Http\Middleware\VerifyShopify;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -23,6 +24,8 @@ class SubscriptionPagesTest extends TestCase
     #[DataProvider('subscriptionPagesProvider')]
     public function test_subscription_pages_render_successfully(string $uri): void
     {
+        $this->withoutMiddleware(VerifyShopify::class);
+
         $response = $this->get($uri);
 
         $response->assertStatus(200);

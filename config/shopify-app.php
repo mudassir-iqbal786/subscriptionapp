@@ -1,5 +1,16 @@
 <?php
 
+use Gnikyt\BasicShopifyAPI\Deferrers\Sleep;
+use Gnikyt\BasicShopifyAPI\Store\Memory;
+use Osiset\ShopifyApp\Messaging\Events\AppInstalledEvent;
+use Osiset\ShopifyApp\Messaging\Events\AppUninstalledEvent;
+use Osiset\ShopifyApp\Messaging\Events\PlanActivatedEvent;
+use Osiset\ShopifyApp\Messaging\Events\ShopAuthenticatedEvent;
+use Osiset\ShopifyApp\Messaging\Events\ShopDeletedEvent;
+use Osiset\ShopifyApp\Objects\Enums\ThemeSupportLevel;
+use Osiset\ShopifyApp\Storage\Models\Charge;
+use Osiset\ShopifyApp\Storage\Models\Plan;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -229,7 +240,7 @@ return [
     |
     */
 
-    'api_time_store' => env('SHOPIFY_API_TIME_STORE', \Gnikyt\BasicShopifyAPI\Store\Memory::class),
+    'api_time_store' => env('SHOPIFY_API_TIME_STORE', Memory::class),
 
     /*
     |--------------------------------------------------------------------------
@@ -241,7 +252,7 @@ return [
     |
     */
 
-    'api_limit_store' => env('SHOPIFY_API_LIMIT_STORE', \Gnikyt\BasicShopifyAPI\Store\Memory::class),
+    'api_limit_store' => env('SHOPIFY_API_LIMIT_STORE', Memory::class),
 
     /*
     |--------------------------------------------------------------------------
@@ -253,7 +264,7 @@ return [
     |
     */
 
-    'api_deferrer' => env('SHOPIFY_API_DEFERRER', \Gnikyt\BasicShopifyAPI\Deferrers\Sleep::class),
+    'api_deferrer' => env('SHOPIFY_API_DEFERRER', Sleep::class),
 
     /*
     |--------------------------------------------------------------------------
@@ -322,7 +333,6 @@ return [
 
     'billing_redirect' => env('SHOPIFY_BILLING_REDIRECT', '/billing/process'),
 
-
     /*
     |--------------------------------------------------------------------------
     | Enable legacy support for features
@@ -353,19 +363,19 @@ return [
     */
 
     'listen' => [
-        \Osiset\ShopifyApp\Messaging\Events\AppInstalledEvent::class => [
+        AppInstalledEvent::class => [
             // \App\Listeners\MyListener::class,
         ],
-        \Osiset\ShopifyApp\Messaging\Events\ShopAuthenticatedEvent::class => [
+        ShopAuthenticatedEvent::class => [
             // \App\Listeners\MyListener::class,
         ],
-        \Osiset\ShopifyApp\Messaging\Events\ShopDeletedEvent::class => [
+        ShopDeletedEvent::class => [
             // \App\Listeners\MyListener::class,
         ],
-        \Osiset\ShopifyApp\Messaging\Events\AppUninstalledEvent::class => [
+        AppUninstalledEvent::class => [
             // \App\Listeners\MyListener::class,
         ],
-        \Osiset\ShopifyApp\Messaging\Events\PlanActivatedEvent::class => [
+        PlanActivatedEvent::class => [
             // \App\Listeners\MyListener::class,
         ],
     ],
@@ -401,7 +411,7 @@ return [
     */
 
     'scripttags' => [
-        /*
+    /*
             [
                 'src' => env('SHOPIFY_SCRIPTTAG_1_SRC', 'https://example.com/some-controller/js-method-response'),
                 'event' => env('SHOPIFY_SCRIPTTAG_1_EVENT', 'onload'),
@@ -427,7 +437,7 @@ return [
      * @see
      */
     'after_authenticate_job' => [
-        /*
+    /*
             [
                 'job' => env('AFTER_AUTHENTICATE_JOB'), // example: \App\Jobs\AfterAuthorizeJob::class
                 'inline' => env('AFTER_AUTHENTICATE_JOB_INLINE', false) // False = dispatch job for later, true = dispatch immediately
@@ -495,12 +505,12 @@ return [
         /*
         * The fully qualified class name of the Charge model.
         */
-        'charge' => Osiset\ShopifyApp\Storage\Models\Charge::class,
+        'charge' => Charge::class,
 
         /*
         * The fully qualified class name of the Plan model.
         */
-        'plan' => Osiset\ShopifyApp\Storage\Models\Plan::class,
+        'plan' => Plan::class,
     ],
 
     'table_names' => [
@@ -549,7 +559,7 @@ return [
          * Available levels: FULL, PARTIAL, UNSUPPORTED.
          */
         'unacceptable_levels' => [
-            Osiset\ShopifyApp\Objects\Enums\ThemeSupportLevel::UNSUPPORTED,
+            ThemeSupportLevel::UNSUPPORTED,
         ],
     ],
 
@@ -586,6 +596,5 @@ return [
     |
     */
     'forbidden_web_middleware_groups' => [
-        'api',
-    ]
+    ],
 ];

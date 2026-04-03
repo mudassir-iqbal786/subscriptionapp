@@ -1,4 +1,5 @@
 import { contracts } from '../data.js';
+import { navigateTo } from '../navigation.js';
 
 export default function ContractsPage() {
     return (
@@ -38,7 +39,7 @@ export default function ContractsPage() {
 
                     <s-table-body>
                         {contracts.map((contract) => (
-                            <s-table-row key={contract.id}>
+                            <s-table-row className="contracts-table-row" key={contract.id} onClick={() => navigateTo('/contracts/detail')}>
                                 <s-table-cell>{contract.id}</s-table-cell>
                                 <s-table-cell>{contract.customer}</s-table-cell>
                                 <s-table-cell>{contract.plan}</s-table-cell>
