@@ -7,16 +7,10 @@ use App\Http\Requests\UpdateSubscriptionPlanRequest;
 use App\Services\ShopifyPlanServices;
 use App\Services\ShopifyProductService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\View\View;
 use RuntimeException;
 
 class SubscriptionPlanPageController extends Controller
 {
-    public function create(): View
-    {
-        return view('app');
-    }
-
     public function store(StoreSubscriptionPlanRequest $request, ShopifyProductService $shopifyProductService): JsonResponse
     {
         //        dd($request->all());

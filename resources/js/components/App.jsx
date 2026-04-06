@@ -1,3 +1,4 @@
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { TitleBar } from '@shopify/app-bridge-react';
 import ContractsPage from './subscriptions/pages/ContractsPage.jsx';
 import ContractDetailPage from './subscriptions/pages/ContractDetailPage.jsx';
@@ -6,42 +7,41 @@ import OverviewPage from './subscriptions/pages/OverviewPage.jsx';
 import PlanDescriptionPage from './subscriptions/pages/PlanDescriptionPage.jsx';
 import PlansPage from './subscriptions/pages/PlansPage.jsx';
 import SettingsPage from './subscriptions/pages/SettingsPage.jsx';
-import { appUrl, getCurrentPage, pageContent } from './subscriptions/navigation.js';
-
-const pages = {
-    home: OverviewPage,
-    plans: PlansPage,
-    planDescription: PlanDescriptionPage,
-    createPlan: CreatePlanPage,
-    contracts: ContractsPage,
-    contractDetail: ContractDetailPage,
-    settings: SettingsPage,
-};
+import { AppAnchor, AppNavLink, buildAppPath, getCurrentPage, pageContent } from './subscriptions/navigation.jsx';
 
 export default function App() {
-    const currentPage = getCurrentPage(window.location.pathname);
+    const location = useLocation();
+    const currentPage = getCurrentPage(location.pathname);
     const currentPageContent = pageContent[currentPage];
-    const CurrentPageComponent = pages[currentPage] ?? OverviewPage;
 
     return (
         <>
             <s-app-nav>
-                <s-link href={appUrl('/plans')}>Plans</s-link>
-                <s-link href={appUrl('/contracts')}>Contracts</s-link>
-                <s-link href={appUrl('/settings')}>Settings</s-link>
+                <AppNavLink to="/plans">Plans</AppNavLink>
+                <AppNavLink to="/contracts">Contracts</AppNavLink>
+                <AppNavLink to="/settings">Settings</AppNavLink>
             </s-app-nav>
 
             <TitleBar title={currentPageContent.title}>
-                {currentPageContent.parentHref ? <a href={appUrl(currentPageContent.parentHref)}>{currentPageContent.parentTitle}</a> : null}
+                {currentPageContent.parentHref ? <AppAnchor to={currentPageContent.parentHref}>{currentPageContent.parentTitle}</AppAnchor> : null}
                 {!currentPageContent.parentHref && currentPage !== 'home' ? (
-                    <a href={appUrl('/')} variant="breadcrumb">
+                    <AppAnchor to="/" variant="breadcrumb">
                         Subscriptions
-                    </a>
+                    </AppAnchor>
                 ) : null}
             </TitleBar>
 
             <main className="app-shell">
-                <CurrentPageComponent />
+                <Routes>
+                    <Route element={<OverviewPage />} path="/" />
+                    <Route element={<PlansPage />} path="/plans" />
+                    <Route element={<CreatePlanPage />} path="/plans/create" />
+                    <Route element={<PlanDescriptionPage />} path="/plans/description/:planId" />
+                    <Route element={<ContractsPage />} path="/contracts" />
+                    <Route element={<ContractDetailPage />} path="/contracts/detail/:contractId" />
+                    <Route element={<SettingsPage />} path="/settings" />
+                    <Route element={<Navigate replace to={buildAppPath('/', location.search)} />} path="*" />
+                </Routes>
             </main>
         </>
     );

@@ -1,0 +1,160 @@
+{% liquid
+  assign subscription_product = product
+  assign selected_variant = subscription_product.selected_or_first_available_variant
+  assign has_selling_plans = false
+
+  if subscription_product and subscription_product.selling_plan_groups.size > 0
+    assign has_selling_plans = true
+  endif
+%}
+
+{% if has_selling_plans %}
+  <div class="subscription-widget" data-subscription-widget {{ block.shopify_attributes }}>
+    <div class="subscription-widget__header">
+      <h2 class="subscription-widget__heading">{{ block.settings.heading }}</h2>
+      <p class="subscription-widget__subheading">{{ block.settings.subheading }}</p>
+    </div>
+
+    <div class="subscription-widget__stack">
+      <label class="subscription-widget__choice is-active" data-mode-card>
+        <input
+          checked
+          class="subscription-widget__radio"
+          data-mode-input
+          name="subscription-mode-{{ block.id }}"
+          type="radio"
+          value="one-time"
+        >
+        <div class="subscription-widget__copy">
+          <div class="subscription-widget__title-row">
+            <span class="subscription-widget__title">{{ 'subscriptions_widget.one_time' | t }}</span>
+          </div>
+          <span class="subscription-widget__description" data-one-time-price>{{ selected_variant.price | money }}</span>
+        </div>
+      </label>
+
+      <label class="subscription-widget__choice" data-mode-card>
+        <input
+          class="subscription-widget__radio"
+          data-mode-input
+          name="subscription-mode-{{ block.id }}"
+          type="radio"
+          value="subscription"
+        >
+        <div class="subscription-widget__copy">
+          <div class="subscription-widget__title-row">
+            <span class="subscription-widget__title">{{ 'subscriptions_widget.subscription' | t }}</span>
+          </div>
+          <span class="subscription-widget__description">{{ 'subscriptions_widget.select_plan' | t }}</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="subscription-widget__plans">
+      <p class="subscription-widget__plans-label">{{ 'subscriptions_widget.plan_label' | t }}</p>
+
+      {% for group in subscription_product.selling_plan_groups %}
+        {% for selling_plan in group.selling_plans %}
+          <label class="subscription-widget__choice" data-plan-card>
+            <input
+              class="subscription-widget__radio"
+              data-plan-input
+              name="subscription-plan-{{ block.id }}"
+              type="radio"
+              value="{{ selling_plan.id }}"
+            >
+            <div class="subscription-widget__copy">
+              <div class="subscription-widget__title-row">
+                <span class="subscription-widget__title">{{ selling_plan.name }}</span>
+                {% if block.settings.show_badge %}
+                  <span class="subscription-widget__badge" data-price-badge data-prefix="{{ block.settings.badge_prefix | escape }}" hidden></span>
+                {% endif %}
+              </div>
+
+              {% if selling_plan.options.size > 0 %}
+                <span class="subscription-widget__description">{{ selling_plan.options | join: ', ' }}</span>
+              {% elsif selling_plan.description != blank %}
+                <span class="subscription-widget__description">{{ selling_plan.description }}</span>
+              {% endif %}
+            </div>
+
+            <div class="subscription-widget__price">
+              <span class="subscription-widget__price-current" data-price-current></span>
+              <span class="subscription-widget__price-compare" data-price-compare hidden></span>
+            </div>
+          </label>
+        {% endfor %}
+      {% endfor %}
+    </div>
+
+    <p class="subscription-widget__note" data-subscription-note hidden>{{ 'subscriptions_widget.unavailable' | t }}</p>
+
+    <script type="application/json" data-subscription-product>
+      {
+        "selectedVariantId": {{ selected_variant.id | json }},
+        "variants": [
+          {% for variant in subscription_product.variants %}
+            {
+              "id": {{ variant.id | json }},
+              "price": {{ variant.price | json }},
+              "currencyCode": {{ cart.currency.iso_code | default: shop.currency | json }},
+              "requiresSellingPlan": {{ variant.requires_selling_plan | json }},
+              "allocations": [
+                {% for allocation in variant.selling_plan_allocations %}
+                  {% assign price_adjustment = allocation.price_adjustments.first %}
+                  {% assign compare_at_price = price_adjustment.compare_at_price | default: allocation.compare_at_price | default: variant.price %}
+                  {% assign percent_off = 0 %}
+                  {% if compare_at_price > allocation.price and compare_at_price > 0 %}
+                    {% assign percent_off = compare_at_price | minus: allocation.price | times: 100.0 | divided_by: compare_at_price | round %}
+                  {% endif %}
+                  {
+                    "planId": {{ allocation.selling_plan.id | json }},
+                    "price": {{ allocation.price | json }},
+                    "compareAtPrice": {{ compare_at_price | json }},
+                    "currencyCode": {{ cart.currency.iso_code | default: shop.currency | json }},
+                    "percentOff": {{ percent_off | json }}
+                  }{% unless forloop.last %},{% endunless %}
+                {% endfor %}
+              ]
+            }{% unless forloop.last %},{% endunless %}
+          {% endfor %}
+        ]
+      }
+    </script>
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Subscription widget",
+  "target": "section",
+  "stylesheet": "subscription-widget.css",
+  "javascript": "subscription-widget.js",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Subscribe and save"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Choose one-time purchase or subscribe for recurring delivery."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_badge",
+      "label": "Show savings badge",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "badge_prefix",
+      "label": "Badge label",
+      "default": "Save"
+    }
+  ]
+}
+{% endschema %}

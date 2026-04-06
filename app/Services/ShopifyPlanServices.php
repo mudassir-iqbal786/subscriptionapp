@@ -116,12 +116,127 @@ GRAPHQL,
                     'name' => $group['name'],
                     'options' => $group['options'] ?? [],
                     'productCount' => count($group['products']['nodes'] ?? []),
+                    'firstProductId' => data_get($group, 'products.nodes.0.id'),
                     'plans' => collect($group['sellingPlans']['nodes'] ?? [])
                         ->map(fn (array $plan): array => $this->mapSellingPlan($plan))
                         ->values(),
                 ];
             })
             ->values();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getPlan(User $shop, string $planId): ?array
+    {
+        if ($planId === '') {
+            return null;
+        }
+
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+query GetSellingPlanGroup($id: ID!) {
+  node(id: $id) {
+    ... on SellingPlanGroup {
+      id
+      name
+      description
+      merchantCode
+      summary
+      options
+      products(first: 25) {
+        nodes {
+          id
+          title
+          totalVariants
+          featuredImage {
+            url
+          }
+        }
+      }
+      sellingPlans(first: 25) {
+        nodes {
+          id
+          name
+          description
+          options
+          billingPolicy {
+            __typename
+            ... on SellingPlanRecurringBillingPolicy {
+              interval
+              intervalCount
+            }
+            ... on SellingPlanFixedBillingPolicy {
+              checkoutCharge {
+                type
+              }
+              remainingBalanceChargeExactTime
+              remainingBalanceChargeTimeAfterCheckout
+              remainingBalanceChargeTrigger
+            }
+          }
+          deliveryPolicy {
+            __typename
+            ... on SellingPlanRecurringDeliveryPolicy {
+              interval
+              intervalCount
+            }
+            ... on SellingPlanFixedDeliveryPolicy {
+              intent
+              preAnchorBehavior
+              fulfillmentTrigger
+              fulfillmentExactTime
+              cutoff
+            }
+          }
+          pricingPolicies {
+            __typename
+            ... on SellingPlanFixedPricingPolicy {
+              adjustmentType
+              adjustmentValue {
+                __typename
+                ... on SellingPlanPricingPolicyPercentageValue {
+                  percentage
+                }
+                ... on MoneyV2 {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+            ... on SellingPlanRecurringPricingPolicy {
+              adjustmentType
+              afterCycle
+              adjustmentValue {
+                __typename
+                ... on SellingPlanPricingPolicyPercentageValue {
+                  percentage
+                }
+                ... on MoneyV2 {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+GRAPHQL,
+            [
+                'id' => $planId,
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $this->assertNoErrors($body);
+
+        $group = data_get($body, 'data.node');
+
+        return is_array($group) ? $group : null;
     }
 
     public function updateSellingPlanGroup(User $shop, array $payload): array

@@ -1,0 +1,172 @@
+.subscription-widget {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 16px;
+  background: #ffffff;
+  color: #111827;
+  padding: 1rem;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+  margin: 1rem 0;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.subscription-widget * {
+  box-sizing: border-box;
+}
+
+.subscription-widget__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.subscription-widget__heading {
+  margin: 0;
+  font-size: 0.48rem;
+  line-height: 1.3;
+}
+
+.subscription-widget__subheading {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.40rem;
+  line-height: 1.5;
+}
+
+.subscription-widget__stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.subscription-widget__choice {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.85rem;
+  align-items: start;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 14px;
+  background: #f9fafb;
+  padding: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.subscription-widget__choice.is-active {
+  background: #ffffff;
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.subscription-widget__choice.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.subscription-widget__radio {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin-top: 0.18rem;
+  accent-color: #111827;
+}
+
+.subscription-widget__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.subscription-widget__title-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.subscription-widget__title {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.subscription-widget__description {
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.subscription-widget__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.subscription-widget__price-current {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subscription-widget__price-compare {
+  color: #6b7280;
+  font-size: 0.82rem;
+  text-decoration: line-through;
+}
+
+.subscription-widget__badge {
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subscription-widget__plans {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.subscription-widget__plans[hidden] {
+  display: none;
+}
+
+.subscription-widget__plans-label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.subscription-widget__note {
+  margin: 0.75rem 0 0;
+  color: #6b7280;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+@media screen and (max-width: 749px) {
+  .subscription-widget {
+    padding: 0.9rem;
+  }
+
+  .subscription-widget__choice {
+    grid-template-columns: auto 1fr;
+  }
+
+  .subscription-widget__price {
+    grid-column: 2;
+    align-items: flex-start;
+    text-align: left;
+  }
+}

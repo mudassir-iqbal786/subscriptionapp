@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { appUrl, navigateTo } from '../navigation.js';
-import { createPlan, plansQueryKey } from '../planQueries.js';
+import { AppAnchor, useAppNavigate } from '../navigation.jsx';
+import { createPlan, fetchPlans, plansQueryKey } from '../planQueries.js';
 
 const storefrontNote = 'Customers will see this on';
 const fallbackSummaryTitle = 'No title';
@@ -32,6 +32,7 @@ function getProductThumbStyle(product) {
 }
 
 export default function CreatePlanPage() {
+    const navigateTo = useAppNavigate();
     const queryClient = useQueryClient();
     const [title, setTitle] = useState('');
     const [internalDescription, setInternalDescription] = useState('');
@@ -199,12 +200,13 @@ export default function CreatePlanPage() {
         mutationFn: createPlan,
         onSuccess: async (response) => {
             setSaveSuccess(response.message ?? 'Subscription plan created successfully.');
-            await queryClient.invalidateQueries({
+            await queryClient.fetchQuery({
                 queryKey: plansQueryKey,
+                queryFn: fetchPlans,
             });
             window.setTimeout(() => {
                 navigateTo('/plans');
-            }, 400);
+            }, 250);
         },
     });
 
@@ -235,10 +237,10 @@ export default function CreatePlanPage() {
     return (
         <div className="plan-description-page">
             <div className="plan-description-page__header">
-                <a className="plan-description-page__back" href={appUrl('/plans')}>
+                <AppAnchor className="plan-description-page__back" to="/plans">
                     <span aria-hidden="true">&larr;</span>
                     <span>Create subscription plan</span>
-                </a>
+                </AppAnchor>
             </div>
 
             <div className="plan-description-page__layout">
@@ -250,7 +252,7 @@ export default function CreatePlanPage() {
                                 <input onChange={(event) => setTitle(event.target.value)} type="text" value={title} />
                             </label>
                             <p className="plan-field__hint">
-                                {storefrontNote} <a href={appUrl('/plans')}>storefront product pages</a> that have subscriptions.
+                                {storefrontNote} <AppAnchor to="/plans">storefront product pages</AppAnchor> that have subscriptions.
                             </p>
                         </div>
 
@@ -404,6 +406,7 @@ export default function CreatePlanPage() {
                             </button>
                         </div>
                     </section>
+
                 </div>
 
                 <aside className="plan-summary-card">

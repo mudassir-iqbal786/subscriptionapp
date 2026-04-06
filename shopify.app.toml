@@ -1,0 +1,28 @@
+client_id = "77a89f3a02cf5606e64eccd1156bc281"
+name = "mudasser-subscription-app"
+application_url = "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app"
+embedded = true
+handle = "mudasser-subscription-app"
+extension_directories = ["extensions/*"]
+web_directories = ["."]
+
+[build]
+automatically_update_urls_on_dev = true
+
+[access_scopes]
+scopes = "read_analytics,read_app_proxy,write_app_proxy,read_assigned_fulfillment_orders,write_assigned_fulfillment_orders,read_audit_events,read_customer_events,read_cart_transforms,write_cart_transforms,read_all_cart_transforms,read_validations,write_validations,read_cash_tracking,write_cash_tracking,read_channels,write_channels,read_checkout_branding_settings,write_checkout_branding_settings,write_checkouts,read_checkouts,write_customer_payment_methods,read_customer_payment_methods,write_inventory,read_inventory,read_legal_policies,write_legal_policies,read_locales,write_locales,write_locations,read_locations,write_marketing_events,read_marketing_events,read_markets,write_markets,read_payment_terms,write_payment_terms,read_payment_customizations,write_payment_customizations,read_product_feeds,write_product_feeds,read_product_listings,write_product_listings,read_products,write_products,read_purchase_options,write_purchase_options,write_reports,read_content,write_content,write_own_subscription_contracts,read_own_subscription_contracts,customer_write_own_subscription_contracts,customer_read_own_subscription_contracts,unauthenticated_write_checkouts,unauthenticated_read_checkouts,unauthenticated_write_customers,unauthenticated_read_customers,unauthenticated_read_selling_plans,unauthenticated_read_content,read_customers,read_orders"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app/authenticate",
+  "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app/authenticate/token"
+]
+
+[webhooks]
+api_version = "2026-01"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "/webhook/app-uninstalled"

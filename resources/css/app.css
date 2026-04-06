@@ -92,6 +92,10 @@ button {
     cursor: pointer;
 }
 
+.contracts-table-row--static {
+    cursor: default;
+}
+
 .plans-page-topbar {
     display: flex;
     align-items: center;
@@ -794,39 +798,42 @@ button {
 .settings-layout {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 22px;
+    padding: 2px 0 18px;
 }
 
 .settings-row {
     display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 22px;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 28px;
     align-items: start;
 }
 
 .settings-row__intro {
-    padding-top: 10px;
+    padding: 18px 0 0 6px;
 }
 
 .settings-row__intro h2 {
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     line-height: 1.4;
 }
 
 .settings-row__intro p {
-    margin: 8px 0 0;
-    color: #4b5563;
-    font-size: 13px;
-    line-height: 1.5;
+    max-width: 255px;
+    margin: 12px 0 0;
+    color: #202223;
+    font-size: 17px;
+    line-height: 1.55;
 }
 
 .settings-panel {
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
+    border: 1px solid #d9dadd;
+    border-radius: 16px;
     background: #ffffff;
     overflow: hidden;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .settings-panel--compact {
@@ -836,7 +843,7 @@ button {
 }
 
 .settings-subpanel {
-    padding: 10px;
+    padding: 18px 20px;
     border-bottom: 1px solid #e5e7eb;
 }
 
@@ -845,80 +852,109 @@ button {
 }
 
 .settings-subpanel--single {
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
+    border: 1px solid #d9dadd;
+    border-radius: 16px;
     background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    padding: 18px 20px 20px;
 }
 
 .settings-subpanel h3 {
-    margin: 0 0 8px;
-    font-size: 13px;
+    margin: 0 0 14px;
+    font-size: 16px;
     font-weight: 700;
+    line-height: 1.4;
 }
 
 .settings-subpanel p {
-    margin: 0 0 8px;
+    margin: 0 0 14px;
     color: #4b5563;
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 760px;
 }
 
 .settings-form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 14px;
 }
 
 .settings-field {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 18px;
 }
 
 .settings-field span {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
     color: #202223;
+    line-height: 1.45;
 }
 
 .settings-field input,
 .settings-field select {
     width: 100%;
-    height: 28px;
+    min-height: 40px;
     border: 1px solid #c1c7d0;
-    border-radius: 6px;
+    border-radius: 12px;
     background: #ffffff;
-    padding: 0 9px;
+    padding: 0 14px;
     color: #202223;
-    font-size: 13px;
+    font-size: 14px;
+    line-height: 1.4;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .settings-field small {
     color: #6b7280;
-    font-size: 11px;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .settings-link-button {
     padding: 0;
     color: #2563eb;
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
     cursor: pointer;
+}
+
+.settings-link-button--inline {
+    display: inline;
+}
+
+.settings-link-button--block {
+    display: block;
+    width: fit-content;
+    margin-bottom: 16px;
+}
+
+.settings-link-button--copy {
+    flex: 0 0 auto;
+    font-size: 15px;
 }
 
 .settings-secondary-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 28px;
+    min-height: 36px;
     border: 1px solid #d1d5db;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #ffffff;
-    padding: 0 12px;
+    padding: 0 14px;
     color: #202223;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
+}
+
+.settings-secondary-button--compact {
+    width: fit-content;
 }
 
 .settings-url-box {
@@ -926,35 +962,46 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #f8fafc;
-    padding: 12px;
+    border: 1px solid #d9dadd;
+    border-radius: 22px;
+    background: #f6f6f7;
+    padding: 18px 20px;
 }
 
 .settings-url-box span {
-    color: #6b7280;
-    font-size: 11px;
-    line-height: 1.5;
+    color: #3f4246;
+    font-size: 14px;
+    line-height: 1.65;
     word-break: break-all;
+    max-width: 100%;
 }
 
 .settings-save-bar {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
-    padding-top: 6px;
+    gap: 16px;
+    padding-top: 2px;
 }
 
 .settings-save-button {
-    min-width: 44px;
-    height: 24px;
-    border: 1px solid #d1d5db;
-    border-radius: 7px;
-    background: #efefef;
-    color: #8a8a8a;
-    font-size: 11px;
+    min-width: 84px;
+    height: 38px;
+    border: 1px solid #111827;
+    border-radius: 12px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.settings-save-button:disabled {
+    border-color: #d1d5db;
+    background: #c9cacc;
+    color: #ffffff;
+    cursor: default;
+    opacity: 1;
 }
 
 .dashboard-home__title {
@@ -1095,8 +1142,9 @@ button {
     width: 22px;
     height: 22px;
     margin-top: 2px;
-    border: 2px dashed #9ca3af;
+    border: 2px solid #9ca3af;
     border-radius: 999px;
+    background: #ffffff;
     color: transparent;
 }
 
@@ -1254,15 +1302,16 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 26px;
+    margin-bottom: 18px;
 }
 
 .plans-page__header h1,
 .contracts-page__header h1 {
     margin: 0;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: -0.03em;
+    color: #202223;
 }
 
 .plans-table-card {
@@ -1369,7 +1418,9 @@ button {
 }
 
 .contracts-page {
+    width: min(100%, 1188px);
     max-width: 955px;
+    margin: 0 auto;
 }
 
 .contracts-page__actions,
@@ -1379,12 +1430,154 @@ button {
     gap: 10px;
 }
 
+.contracts-page__actions {
+    justify-content: flex-end;
+}
+
+.contracts-page__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    min-width: 0;
+    border: 1px solid #d9dadd;
+    border-radius: 10px;
+    background: #efefef;
+    padding: 0 14px;
+    color: #202223;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.contracts-import-modal__input {
+    display: none;
+}
+
+.contracts-filter-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border-radius: 10px;
+    background: transparent;
+    padding: 0 14px;
+    color: #202223;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.contracts-filter-tab--active {
+    background: #efefef;
+}
+
+.contracts-table-sort {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.contracts-table-sort__icon {
+    width: 16px;
+    height: 16px;
+}
+
+.contracts-modal__content {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 22px;
+}
+
+.contracts-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e5e7eb;
+    padding: 18px 22px 22px;
+}
+
+.contracts-modal__link,
+.contracts-modal__link-button {
+    width: fit-content;
+    color: #005bd3;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.contracts-modal__link-button {
+    padding: 0;
+    background: transparent;
+}
+
+.contracts-import-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 148px;
+    border: 1px dashed #9ca3af;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 24px;
+}
+
+.contracts-import-dropzone__filename {
+    margin: 12px 0 0;
+    color: #4b5563;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.contracts-export-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+}
+
+.contracts-export-group h3 {
+    margin: 0 0 14px;
+    color: #3f4246;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.contracts-export-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    color: #3f4246;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.contracts-export-option input[type='radio'] {
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    accent-color: #202223;
+}
+
 .contracts-table-card {
     overflow: hidden;
     border: 1px solid #d1d5db;
     border-radius: 16px;
     background: #ffffff;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    margin: 0 auto;
 }
 
 .text-tab {
@@ -1400,6 +1593,93 @@ button {
 
 .contracts-table {
     border-top: 1px solid #e5e7eb;
+}
+
+.contracts-table__selection-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 36px;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 14px;
+    background: #ffffff;
+}
+
+.contracts-table__selection-summary,
+.contracts-table__selection-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.contracts-table__selection-actions {
+    justify-content: flex-end;
+}
+
+.contracts-table__selection-summary strong {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.contracts-table__action-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border: 1px solid #d9dadd;
+    border-radius: 10px;
+    background: #efefef;
+    padding: 0 12px;
+    color: #a8adb4;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: default;
+}
+
+.contracts-table__action-button:disabled {
+    opacity: 1;
+}
+
+.contracts-table__action-button--enabled {
+    background: #ffffff;
+    color: #202223;
+    cursor: pointer;
+}
+
+.contracts-table__action-button--pause.contracts-table__action-button--enabled {
+    border-color: #d9dadd;
+    color: #202223;
+}
+
+.contracts-table__action-button--resume.contracts-table__action-button--enabled {
+    border-color: #d9dadd;
+    color: #202223;
+}
+
+.contracts-table__action-button--cancel.contracts-table__action-button--enabled {
+    border-color: #d9dadd;
+    color: #202223;
+}
+
+.contracts-table__action-button--working {
+    background: #111827;
+    border-color: #111827;
+    color: #ffffff;
+    cursor: wait;
+}
+
+.contracts-table__action-button--active {
+    background: #ffffff;
+    color: #202223;
+    cursor: pointer;
+}
+
+.polaris-page-help {
+    display: flex;
+    justify-content: center;
+    margin-top: 42px;
+    text-align: center;
 }
 
 .contracts-table__head,
@@ -1422,7 +1702,18 @@ button {
 
 .contracts-table__row {
     min-height: 32px;
+    border-bottom: 1px solid #e5e7eb;
     font-size: 15px;
+}
+
+.contracts-table__row--static {
+    display: block;
+    padding: 16px 12px;
+    color: #6b7280;
+}
+
+.contracts-table__row--clickable {
+    cursor: pointer;
 }
 
 .contracts-table__row strong {
@@ -1430,10 +1721,52 @@ button {
     font-weight: 700;
 }
 
+.contracts-table__row span,
+.contracts-table__row strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .contracts-table__check {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.contracts-table__check input {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    accent-color: #111827;
+    cursor: pointer;
+}
+
+.contracts-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    border-radius: 999px;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.contracts-status-pill--critical {
+    background: #fed7aa;
+    color: #7c4a03;
+}
+
+.contracts-status-pill--warning {
+    background: #fef3c7;
+    color: #8a5500;
+}
+
+.contracts-status-pill--success {
+    background: #dcfce7;
+    color: #166534;
 }
 
 .hero-card__content {
@@ -1814,6 +2147,7 @@ button {
     .data-table__row {
         min-width: 760px;
     }
+
 }
 
 @media (max-width: 640px) {
@@ -1920,4 +2254,10 @@ button {
         flex-direction: column;
         align-items: flex-start;
     }
+}
+
+.big-icon .icon {
+    /*height: 24px !important;*/
+    line-height : 2 !important;
+    inline-size : 1.98rem !important;
 }

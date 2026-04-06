@@ -585,6 +585,29 @@ return [
     */
     'frontend_type' => env('SHOPIFY_FRONTEND_TYPE', 'MPA'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Theme app extension block handle
+    |--------------------------------------------------------------------------
+    |
+    | The Liquid filename handle for the product-page theme app block.
+    | Example: if your extension block file is
+    | extensions/subscriptions/blocks/subscription-widget.liquid
+    | then the handle is "subscription-widget".
+    |
+    */
+    'theme_block_handle' => env('SHOPIFY_THEME_BLOCK_HANDLE', 'subscription-widget'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Subscription management settings URL
+    |--------------------------------------------------------------------------
+    |
+    | Direct admin URL for enabling subscription management in Shopify.
+    |
+    */
+    'subscription_management_settings_url' => env('SHOPIFY_SUBSCRIPTION_MANAGEMENT_SETTINGS_URL', ''),
+
     'iframe_ancestors' => '',
 
     /*

@@ -1,71 +1,240 @@
-import { contractDetail } from '../data.js';
-import { appUrl } from '../navigation.js';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { contractDetailQueryKey, fetchContractDetail } from '../contractQueries.js';
+import { AppAnchor } from '../navigation.jsx';
+
+function getStatusTone(status) {
+    if (status === 'Paused') {
+        return 'warning';
+    }
+
+    if (status === 'Canceled') {
+        return 'critical';
+    }
+
+    return 'success';
+}
 
 export default function ContractDetailPage() {
+    const { contractId = '' } = useParams();
+    const queryClient = useQueryClient();
+    const [actionError, setActionError] = useState('');
+    const [isCancelling, setIsCancelling] = useState(false);
+    const [isPausing, setIsPausing] = useState(false);
+    const [isResuming, setIsResuming] = useState(false);
+
+
+    const { data: contract, isLoading, isError, error } = useQuery({
+        queryKey: contractDetailQueryKey(contractId),
+        queryFn: () => fetchContractDetail(contractId),
+        enabled: contractId !== '',
+    });
+
+    async function handleCancelledSubscription() {
+        if (contractId === '' || isCancelling || contract?.status === 'Canceled' || contract?.isImported) {
+            return;
+        }
+
+        setActionError('');
+        setIsCancelling(true);
+
+        try {
+            await window.axios.post(`/api/contracts/${encodeURIComponent(contractId)}/cancel`);
+            await queryClient.invalidateQueries({ queryKey: contractDetailQueryKey(contractId) });
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
+        } catch (requestError) {
+            setActionError(requestError?.response?.data?.message ?? 'Unable to cancel this subscription right now.');
+        } finally {
+            setIsCancelling(false);
+        }
+    }
+
+    async function handlePauseSubscription() {
+        if (contractId === '' || isPausing || contract?.status === 'Paused' || contract?.status === 'Canceled' || contract?.isImported) {
+            return;
+        }
+
+        setActionError('');
+        setIsPausing(true);
+
+        try {
+            await window.axios.post(`/api/contracts/${encodeURIComponent(contractId)}/pause`);
+            await queryClient.invalidateQueries({ queryKey: contractDetailQueryKey(contractId) });
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
+        } catch (requestError) {
+            setActionError(requestError?.response?.data?.message ?? 'Unable to pause this subscription right now.');
+        } finally {
+            setIsPausing(false);
+        }
+    }
+
+    async function handleResumeSubscription() {
+        if (contractId === '' || isResuming || contract?.status !== 'Paused' || contract?.isImported) {
+            return;
+        }
+
+        setActionError('');
+        setIsResuming(true);
+
+        try {
+            await window.axios.post(`/api/contracts/${encodeURIComponent(contractId)}/resume`);
+            await queryClient.invalidateQueries({ queryKey: contractDetailQueryKey(contractId) });
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
+        } catch (requestError) {
+            setActionError(requestError?.response?.data?.message ?? 'Unable to resume this subscription right now.');
+        } finally {
+            setIsResuming(false);
+        }
+    }
+
+    if (isLoading) {
+        return (
+            <div className="contract-detail-page">
+                <div className="plan-description-page__header">
+                    <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
+                    </AppAnchor>
+                </div>
+
+                <p className="plan-feedback">Loading this subscription contract...</p>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="contract-detail-page">
+                <div className="plan-description-page__header">
+                    <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left"></s-icon></span>
+
+                    </AppAnchor>
+                </div>
+
+                <p className="plan-feedback plan-feedback--error">{error?.response?.data?.message ?? 'Unable to load this subscription contract right now.'}</p>
+            </div>
+        );
+    }
+
+    if (!contract) {
+        return (
+            <div className="contract-detail-page">
+                <div className="plan-description-page__header">
+                    <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
+
+                    </AppAnchor>
+                </div>
+
+                <p className="plan-feedback plan-feedback--error">The selected subscription contract could not be found.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="contract-detail-page">
             <div className="contract-detail-page__topbar">
                 <div className="contract-detail-page__heading-group">
-                    <a className="contract-detail-page__back" href={appUrl('/contracts')}>
-                        <span aria-hidden="true">&larr;</span>
-                    </a>
+                    <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
+                    </AppAnchor>
 
                     <div>
                         <div className="contract-detail-page__heading-row">
-                            <h1>{contractDetail.contractNumber}</h1>
-                            <span className="contract-status-badge">{contractDetail.status}</span>
+                            <h1>{contract.displayId ?? contract.id}</h1>
+                            <span className="contract-status-badge">
+                                <s-badge tone={getStatusTone(contract.status)}>{contract.status}</s-badge>
+                            </span>
                         </div>
                         <p>
-                            {contractDetail.orderDate} &bull; Order {contractDetail.orderNumber}
+                            {contract.orderDate} &bull; Order {contract.orderNumber}
                         </p>
                     </div>
                 </div>
 
                 <div className="contract-detail-page__actions">
-                    <button className="contract-detail-page__button" type="button">
-                        Pause
+                    <button
+                        className="contract-detail-page__button"
+                        type="button"
+                        onClick={contract.status === 'Paused' ? handleResumeSubscription : handlePauseSubscription}
+                        disabled={isPausing || isResuming || contract.status === 'Canceled' || contract.isImported}
+                    >
+                        {isPausing ? 'Pausing...' : isResuming ? 'Resuming...' : contract.status === 'Paused' ? 'Resume' : 'Pause'}
                     </button>
-                    <button className="contract-detail-page__button contract-detail-page__button--danger" type="button">
-                        Cancel subscription
+                    <button
+                        onClick={handleCancelledSubscription}
+                        className="contract-detail-page__button contract-detail-page__button--danger"
+                        type="button"
+                        disabled={isCancelling || contract.status === 'Canceled' || contract.isImported}
+                    >
+                        {isCancelling ? 'Cancelling...' : contract.status === 'Canceled' ? 'Canceled' : 'Cancel subscription'}
                     </button>
                 </div>
             </div>
+
+            {actionError !== '' ? <p className="plan-feedback plan-feedback--error">{actionError}</p> : null}
+            {contract.isImported ? <p className="plan-feedback">Imported contracts are read-only inside the app detail view.</p> : null}
 
             <div className="contract-detail-page__layout">
                 <div className="contract-detail-page__main">
                     <section className="contract-card">
                         <div className="contract-card__header">
                             <h2>Subscription details</h2>
-                            <button className="contract-card__edit" type="button">
-                                Edit
-                            </button>
                         </div>
 
-                        <div className="contract-product">
-                            <span className="contract-product__thumb" />
+                        {contract.lineItems?.length > 0 ? contract.lineItems.map((lineItem) => (
+                            <div className="contract-product" key={lineItem.id}>
+                                <span className="contract-product__thumb" />
 
-                            <div className="contract-product__content">
-                                <a href={appUrl('/plans/description')}>{contractDetail.productTitle}</a>
-                                <p>{contractDetail.productSubtitle}</p>
-                                <span>One-time purchase price: {contractDetail.oneTimePurchasePrice}</span>
-                            </div>
+                                <div className="contract-product__content">
+                                    {contract.planId ? <AppAnchor to={`/plans/description/${encodeURIComponent(contract.planId)}`}>{lineItem.title}</AppAnchor> : <span>{lineItem.title}</span>}
+                                    <p>{lineItem.subtitle}</p>
+                                    <span>Unit price: {lineItem.unitPrice}</span>
+                                </div>
 
-                            <div className="contract-product__pricing">
-                                <span>
-                                    {contractDetail.productPrice} x {contractDetail.quantity}
-                                </span>
-                                <strong>{contractDetail.lineTotal}</strong>
+                                <div className="contract-product__pricing">
+                                    <span>
+                                        {lineItem.unitPrice} x {lineItem.quantity}
+                                    </span>
+                                    <strong>{lineItem.total}</strong>
+                                </div>
                             </div>
-                        </div>
+                        )) : (
+                            <div className="contract-product">
+                                <span className="contract-product__thumb" />
+
+                                <div className="contract-product__content">
+                                    {contract.planId ? <AppAnchor to={`/plans/description/${encodeURIComponent(contract.planId)}`}>{contract.productTitle}</AppAnchor> : <span>{contract.productTitle}</span>}
+                                    <p>{contract.productSubtitle}</p>
+                                    <span>One-time purchase price: {contract.oneTimePurchasePrice}</span>
+                                </div>
+
+                                <div className="contract-product__pricing">
+                                    <span>
+                                        {contract.productPrice} x {contract.quantity}
+                                    </span>
+                                    <strong>{contract.lineTotal}</strong>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="contract-meta-list">
                             <div className="contract-meta-list__item">
                                 <span>Discount</span>
-                                <strong>{contractDetail.discount}</strong>
+                                <strong>{contract.discount}</strong>
                             </div>
                             <div className="contract-meta-list__item">
                                 <span>Delivery</span>
-                                <strong>{contractDetail.delivery}</strong>
+                                <strong>{contract.deliveryFrequency}</strong>
+                            </div>
+                            <div className="contract-meta-list__item">
+                                <span>Next billing date</span>
+                                <strong>{contract.nextOrder}</strong>
+                            </div>
+                            <div className="contract-meta-list__item">
+                                <span>Created</span>
+                                <strong>{contract.createdAtLabel}</strong>
                             </div>
                         </div>
                     </section>
@@ -76,7 +245,7 @@ export default function ContractDetailPage() {
                         </div>
 
                         <div className="contract-summary-list">
-                            {contractDetail.paymentSummary.map((item) => (
+                            {contract.paymentSummary.map((item) => (
                                 <div className="contract-summary-list__row" key={item.label}>
                                     <div className="contract-summary-list__label">
                                         <span>{item.label}</span>
@@ -94,27 +263,48 @@ export default function ContractDetailPage() {
                         </div>
 
                         <div className="contract-upcoming-list">
-                            {contractDetail.upcomingOrders.map((date) => (
-                                <div className="contract-upcoming-list__row" key={date}>
-                                    <span>{date}</span>
-                                    <button className="contract-upcoming-list__link" type="button">
-                                        Skip
-                                    </button>
-                                </div>
-                            ))}
+                            {contract.upcomingOrders.length > 0
+                                ? contract.upcomingOrders.map((date) => (
+                                      <div className="contract-upcoming-list__row" key={date}>
+                                          <span>{date}</span>
+                                      </div>
+                                  ))
+                                : (
+                                    <div className="contract-upcoming-list__row">
+                                        <span>No upcoming billing dates are available yet.</span>
+                                    </div>
+                                )}
                         </div>
 
-                        <button className="contract-card__more-link" type="button">
-                            Show more
-                        </button>
+                    </section>
+
+                    <section className="contract-card">
+                        <div className="contract-card__header">
+                            <h2>Order history</h2>
+                        </div>
+
+                        <div className="contract-upcoming-list">
+                            {contract.orderHistory?.length > 0 ? (
+                                contract.orderHistory.map((order) => (
+                                    <div className="contract-upcoming-list__row" key={order.id}>
+                                        <span>{order.name}</span>
+                                        <strong>{order.date}</strong>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="contract-upcoming-list__row">
+                                    <span>No order history is available yet.</span>
+                                </div>
+                            )}
+                        </div>
                     </section>
 
                     <section className="contract-timeline">
                         <h2>Timeline</h2>
-                        <div className="contract-timeline__date">{contractDetail.timelineDate}</div>
+                        <div className="contract-timeline__date">{contract.timelineDate}</div>
 
                         <div className="contract-timeline__list">
-                            {contractDetail.timeline.map((item) => (
+                            {contract.timeline.map((item) => (
                                 <div className="contract-timeline__item" key={item.id}>
                                     <span className="contract-timeline__dot" />
                                     <div className="contract-timeline__content">
@@ -134,26 +324,25 @@ export default function ContractDetailPage() {
                         </div>
 
                         <div className="contract-side-block">
-                            <h3>{contractDetail.customer.name}</h3>
-                            <a href={`mailto:${contractDetail.customer.email}`}>{contractDetail.customer.email}</a>
+                            <h3>{contract.customer.name}</h3>
+                            <a href={`mailto:${contract.customer.email}`}>{contract.customer.email}</a>
                         </div>
 
                         <div className="contract-side-block">
                             <div className="contract-side-block__heading">
                                 <h3>Contact information</h3>
                             </div>
-                            <a href={`mailto:${contractDetail.customer.email}`}>{contractDetail.customer.email}</a>
+                            <a href={`mailto:${contract.customer.email}`}>{contract.customer.email}</a>
                         </div>
 
                         <div className="contract-side-block">
                             <div className="contract-side-block__heading">
-                                <h3>Shipping address</h3>
-                                <button className="contract-card__edit" type="button">
-                                    Edit
-                                </button>
+                                <h3>{contract.deliveryMethod?.type ?? 'Shipping address'}</h3>
                             </div>
 
-                            {contractDetail.customer.addressLines.map((line) => (
+                            <p>{contract.deliveryMethod?.title ?? 'Address unavailable'}</p>
+                            {contract.deliveryMethod?.description ? <p>{contract.deliveryMethod.description}</p> : null}
+                            {(contract.deliveryMethod?.addressLines ?? contract.customer.addressLines).map((line) => (
                                 <p key={line}>{line}</p>
                             ))}
                         </div>
@@ -162,16 +351,14 @@ export default function ContractDetailPage() {
                     <section className="contract-card">
                         <div className="contract-card__header">
                             <h2>Payment method</h2>
-                            <button className="contract-card__edit" type="button">
-                                Edit
-                            </button>
                         </div>
 
                         <div className="contract-payment-method">
-                            <span className="contract-payment-method__badge">{contractDetail.paymentMethod.brand}</span>
+                            <span className="contract-payment-method__badge">{contract.paymentMethod.brand}</span>
                             <div>
-                                <strong>{contractDetail.paymentMethod.label}</strong>
-                                <p>{contractDetail.paymentMethod.expiry}</p>
+                                <strong>{contract.paymentMethod.label}</strong>
+                                <p>{contract.paymentMethod.expiry}</p>
+                                <p>Last updated: {contract.updatedAtLabel}</p>
                             </div>
                         </div>
                     </section>

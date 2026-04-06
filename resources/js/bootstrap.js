@@ -6,6 +6,19 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 let isRefreshingSessionToken = null;
 
+function removeTransientShopifyTokenFromUrl() {
+    const currentUrl = new URL(window.location.href);
+
+    if (!currentUrl.searchParams.has('token')) {
+        return;
+    }
+
+    currentUrl.searchParams.delete('token');
+    window.history.replaceState({}, document.title, `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+}
+
+removeTransientShopifyTokenFromUrl();
+
 function sleep(duration) {
     return new Promise((resolve) => {
         window.setTimeout(resolve, duration);

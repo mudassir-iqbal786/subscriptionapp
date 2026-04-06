@@ -5,14 +5,18 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Osiset\ShopifyApp\Contracts\ShopModel as ShopifyShopModel;
 use Osiset\ShopifyApp\Traits\ShopModel;
 
-class User extends Authenticatable implements ShopifyShopModel {
+class User extends Authenticatable implements ShopifyShopModel
+{
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
     use ShopModel;
 
     /**
@@ -45,7 +49,17 @@ class User extends Authenticatable implements ShopifyShopModel {
     {
         return [
             'email_verified_at' => 'datetime',
-//            'password' => 'hashed',
+            //            'password' => 'hashed',
         ];
+    }
+
+    public function subscriptionSetting(): HasOne
+    {
+        return $this->hasOne(SubscriptionSetting::class);
+    }
+
+    public function importedSubscriptionContracts(): HasMany
+    {
+        return $this->hasMany(ImportedSubscriptionContract::class);
     }
 }

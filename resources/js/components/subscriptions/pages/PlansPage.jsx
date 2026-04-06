@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { navigateTo } from '../navigation.js';
+import { useAppNavigate } from '../navigation.jsx';
 import { fetchPlans, plansQueryKey } from '../planQueries.js';
 
 export default function PlansPage() {
+    const navigateTo = useAppNavigate();
     const { data: plans = [], error, isLoading } = useQuery({
         queryKey: plansQueryKey,
         queryFn: fetchPlans,
@@ -84,7 +85,7 @@ export default function PlansPage() {
                             <s-table-row
                                 className="plans-table-row"
                                 key={plan.id}
-                                onClick={() => navigateTo(`/plans/description?planId=${encodeURIComponent(plan.id)}`)}
+                                onClick={() => navigateTo(`/plans/description/${encodeURIComponent(plan.id)}`)}
                             >
                                 <s-table-cell>
                                     <button className="plans-table-row__link" type="button">

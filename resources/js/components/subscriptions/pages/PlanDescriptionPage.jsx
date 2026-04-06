@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { appUrl, navigateTo } from '../navigation.js';
+import { useParams } from 'react-router-dom';
+import { AppAnchor, useAppNavigate } from '../navigation.jsx';
 import { deletePlan, fetchPlanDetail, planDetailQueryKey, plansQueryKey, updatePlan } from '../planQueries.js';
 
 const storefrontNote = 'Customers will see this on';
 const getProductsUrl = '/api/get-products';
 const searchProductsUrl = '/api/search-products';
-
-function getPlanIdFromUrl() {
-    const searchParams = new URLSearchParams(window.location.search);
-
-    return searchParams.get('planId');
-}
 
 function getProductThumbStyle(product) {
     if (product.imageUrl) {
@@ -60,7 +55,10 @@ function getInitialTitle(plan) {
 }
 
 function getInitialInternalDescription(plan) {
-    return plan?.description ?? plan?.plans?.[0]?.description ?? '';
+    const groupDescription = typeof plan?.description === 'string' ? plan.description.trim() : '';
+    const firstPlanDescription = typeof plan?.plans?.[0]?.description === 'string' ? plan.plans[0].description.trim() : '';
+
+    return groupDescription || firstPlanDescription || '';
 }
 
 function getInitialDiscountType(plan) {
@@ -72,8 +70,9 @@ function getInitialDiscountType(plan) {
 }
 
 export default function PlanDescriptionPage() {
+    const navigateTo = useAppNavigate();
     const queryClient = useQueryClient();
-    const planId = getPlanIdFromUrl();
+    const { planId = '' } = useParams();
     const { data: plan = null, error, isLoading } = useQuery({
         enabled: Boolean(planId),
         queryKey: planDetailQueryKey(planId),
@@ -323,10 +322,10 @@ export default function PlanDescriptionPage() {
         return (
             <div className="plan-description-page">
                 <div className="plan-description-page__header">
-                    <a className="plan-description-page__back" href={appUrl('/plans')}>
+                    <AppAnchor className="plan-description-page__back" to="/plans">
                         <span aria-hidden="true">&larr;</span>
                         <span>Back to plans</span>
-                    </a>
+                    </AppAnchor>
                 </div>
 
                 <p className="plan-field__hint">Select a plan from the plans list to view and update its details.</p>
@@ -337,10 +336,10 @@ export default function PlanDescriptionPage() {
     return (
         <div className="plan-description-page">
             <div className="plan-description-page__header">
-                <a className="plan-description-page__back" href={appUrl('/plans')}>
+                <AppAnchor className="plan-description-page__back" to="/plans">
                     <span aria-hidden="true">&larr;</span>
                     <span>{plan.name}</span>
-                </a>
+                </AppAnchor>
             </div>
 
             <div className="plan-description-page__layout">
@@ -352,7 +351,7 @@ export default function PlanDescriptionPage() {
                                 <input onChange={(event) => setTitle(event.target.value)} type="text" value={title} />
                             </label>
                             <p className="plan-field__hint">
-                                {storefrontNote} <a href={appUrl('/plans')}>storefront product pages</a> that have subscriptions.
+                                {storefrontNote} <AppAnchor to="/plans">storefront product pages</AppAnchor> that have subscriptions.
                             </p>
                         </div>
 
@@ -513,6 +512,7 @@ export default function PlanDescriptionPage() {
                             </button>
                         </div>
                     </section>
+
                 </div>
 
                 <aside className="plan-summary-card">

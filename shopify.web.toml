@@ -1,0 +1,6 @@
+roles = ["frontend", "backend"]
+webhooks_path = "/webhook"
+
+[commands]
+dev = "composer run dev"
+build = "npm run build"

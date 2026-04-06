@@ -1,0 +1,9 @@
+{
+  "subscriptions_widget": {
+    "one_time": "One-time purchase",
+    "subscription": "Subscribe and save",
+    "select_plan": "Choose a delivery schedule for this product.",
+    "plan_label": "Subscription plans",
+    "unavailable": "Subscription options are unavailable for the currently selected variant."
+  }
+}
