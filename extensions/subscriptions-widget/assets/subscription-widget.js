@@ -5,6 +5,7 @@
     }
 
     try {
+
       return JSON.parse(node.textContent || "null");
     } catch (error) {
       console.error("Subscription widget payload error", error);
@@ -14,11 +15,15 @@
 
   function getProductForm(container) {
     const section = container.closest(".shopify-section");
+
+    console.log("From Section",section);
+
     const selectors = [
       'form[action*="/cart/add"]',
       "product-form form",
       "product-info form"
     ];
+
 
     for (const scope of [section, document]) {
       if (!scope) {

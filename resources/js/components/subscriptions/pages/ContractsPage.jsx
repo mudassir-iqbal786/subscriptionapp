@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, useEffect } from 'react';
-import { contractsQueryKey, fetchContracts, importContracts } from '../contractQueries.js';
+import { useLocation } from 'react-router-dom';
+import { contractDetailQueryKey, contractsQueryKey, fetchContractDetail, fetchContracts, importContracts } from '../contractQueries.js';
 import { useAppNavigate } from '../navigation.jsx';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-const contractsPageStateStorageKey = 'subscriptions-contracts-page-state';
 const contractCsvTemplate = `handle,upcoming_billing_date,customer_id,currency_code,status,cadence_interval,cadence_interval_count,customer_payment_method_id,delivery_price,delivery_method_type,delivery_address_first_name,delivery_address_last_name,delivery_address_address1,delivery_address_address2,delivery_address_city,delivery_address_province_code,delivery_address_country_code,delivery_address_company,delivery_address_zip,delivery_address_phone,delivery_local_delivery_phone,delivery_local_delivery_instructions,delivery_pickup_method_location_id,line_variant_id,line_quantity,line_current_price,line_selling_plan_id,line_selling_plan_name
 Example-beverage-contract,2024-04-12T17:00:00Z,6320530986896,USD,ACTIVE,MONTH,3,24e8c839c47ef47d30ad28346d130e74,0,SHIPPING,Jane,Doe,2470 Bedford Ave,,Buffalo,NY,US,,11226,,,,,53154087005812,1,50,3607724288,"Subscription, delivery every 3 months, save 10%"
 Example-beverage-contract,,,,,,,,,,,,,,,,,,,,,,,53174099004429,1,60,3607724288,"Subscription, delivery every 3 months, save 10%"
@@ -215,20 +215,15 @@ function getBulkActionButtonClass(action, isEnabled, activeBulkAction) {
 }
 
 export default function ContractsPage() {
+    const location = useLocation();
     const navigateTo = useAppNavigate();
-    const storedPageState = (() => {
-        try {
-            return JSON.parse(window.sessionStorage.getItem(contractsPageStateStorageKey) ?? '{}');
-        } catch {
-            return {};
-        }
-    })();
-    const initialPage = Math.max(1, Number(storedPageState.page ?? 1) || 1);
-    const initialPageSize = [10, 25, 50].includes(Number(storedPageState.perPage))
-        ? Number(storedPageState.perPage)
+    const restoredPageState = location.state?.contractsPageState ?? {};
+    const initialPage = Math.max(1, Number(restoredPageState.page ?? 1) || 1);
+    const initialPageSize = [10, 25, 50].includes(Number(restoredPageState.perPage))
+        ? Number(restoredPageState.perPage)
         : 10;
-    const initialFilter = ['All', 'Active', 'Paused', 'Canceled'].includes(storedPageState.filter ?? '')
-        ? storedPageState.filter
+    const initialFilter = ['All', 'Active', 'Paused', 'Canceled'].includes(restoredPageState.filter ?? '')
+        ? restoredPageState.filter
         : 'All';
     const queryClient = useQueryClient();
     const exportModalRef = useRef(null);
@@ -361,16 +356,29 @@ export default function ContractsPage() {
     const hasPreviousPage = pagination.hasPreviousPage;
     const hasNextPage = pagination.hasNextPage;
 
-    useEffect(() => {
-        window.sessionStorage.setItem(contractsPageStateStorageKey, JSON.stringify({
-            page: currentPage,
-            perPage: pageSize,
-            filter: activeFilter,
-        }));
-    }, [activeFilter, currentPage, pageSize]);
-
     function handleRowNavigation(contractId) {
-        navigateTo(`/contracts/detail/${encodeURIComponent(contractId)}`);
+        void queryClient.prefetchQuery({
+            queryKey: contractDetailQueryKey(contractId),
+            queryFn: () => fetchContractDetail(contractId),
+        });
+
+        navigateTo(`/contracts/detail/${encodeURIComponent(contractId)}`, {
+            state: {
+                contractsPageState: {
+                    page: currentPage,
+                    perPage: pageSize,
+                    filter: activeFilter,
+                },
+            },
+        });
+    }
+
+    function prefetchContractDetail(contractId) {
+        void queryClient.prefetchQuery({
+            queryKey: contractDetailQueryKey(contractId),
+            queryFn: () => fetchContractDetail(contractId),
+            staleTime: 30_000,
+        });
     }
 
     function handleFilterChange(filter) {
@@ -647,6 +655,8 @@ export default function ContractsPage() {
                               <div
                                   className="contracts-table__row contracts-table__row--clickable"
                                   key={contract.id}
+                                  onFocus={() => prefetchContractDetail(contract.id)}
+                                  onMouseEnter={() => prefetchContractDetail(contract.id)}
                                   onClick={() => handleRowNavigation(contract.id)}
                                   onKeyDown={(event) => {
                                       if (event.key === 'Enter' || event.key === ' ') {

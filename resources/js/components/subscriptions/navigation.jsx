@@ -208,7 +208,7 @@ export function openShopifySubscriptionContracts(currentSearch = window.location
     return true;
 }
 
-export function AppAnchor({ to, onClick, ...props }) {
+export function AppAnchor({ to, onClick, state, ...props }) {
     const href = useAppUrl(to);
     const navigate = useAppNavigate();
 
@@ -220,7 +220,7 @@ export function AppAnchor({ to, onClick, ...props }) {
         }
 
         event.preventDefault();
-        navigate(to);
+        navigate(to, { state });
     }
 
     return <a {...props} href={href} onClick={handleClick} />;

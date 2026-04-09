@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { contractDetailQueryKey, fetchContractDetail } from '../contractQueries.js';
 import { AppAnchor } from '../navigation.jsx';
 
@@ -85,18 +85,30 @@ function ProductThumb({ imageUrl, title }) {
 
 export default function ContractDetailPage() {
     const { contractId = '' } = useParams();
+    const location = useLocation();
     const queryClient = useQueryClient();
     const [actionError, setActionError] = useState('');
     const [isCancelling, setIsCancelling] = useState(false);
     const [isPausing, setIsPausing] = useState(false);
     const [isResuming, setIsResuming] = useState(false);
     const [isShowingAllUpcomingOrders, setIsShowingAllUpcomingOrders] = useState(false);
+    const contractsBackState = location.state?.contractsPageState
+        ? { contractsPageState: location.state.contractsPageState }
+        : undefined;
+    const cachedContract = queryClient
+        .getQueriesData({ queryKey: ['contracts'] })
+        .flatMap(([, value]) => {
+            const contracts = Array.isArray(value?.contracts) ? value.contracts : Array.isArray(value) ? value : [];
 
+            return contracts;
+        })
+        .find((item) => item?.id === contractId);
 
     const { data: contract, isLoading, isError, error } = useQuery({
         queryKey: contractDetailQueryKey(contractId),
         queryFn: () => fetchContractDetail(contractId),
         enabled: contractId !== '',
+        initialData: cachedContract,
     });
 
     useEffect(() => {
@@ -227,7 +239,7 @@ export default function ContractDetailPage() {
             <s-page inlineSize="large">
                 <div className="contract-detail-page">
                     <div className="plan-description-page__header">
-                        <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <AppAnchor className="contract-detail-page__back" state={contractsBackState} to="/contracts">
                             <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
                         </AppAnchor>
                     </div>
@@ -243,7 +255,7 @@ export default function ContractDetailPage() {
             <s-page inlineSize="large">
                 <div className="contract-detail-page">
                     <div className="plan-description-page__header">
-                        <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <AppAnchor className="contract-detail-page__back" state={contractsBackState} to="/contracts">
                             <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
                         </AppAnchor>
                     </div>
@@ -259,7 +271,7 @@ export default function ContractDetailPage() {
             <s-page inlineSize="large">
                 <div className="contract-detail-page">
                     <div className="plan-description-page__header">
-                        <AppAnchor className="contract-detail-page__back" to="/contracts">
+                        <AppAnchor className="contract-detail-page__back" state={contractsBackState} to="/contracts">
                             <span aria-hidden="true"><s-icon type="arrow-left" size="large"></s-icon></span>
                         </AppAnchor>
                     </div>
@@ -279,7 +291,7 @@ export default function ContractDetailPage() {
                 <div className="contract-detail-page">
                     <div className="contract-detail-page__topbar">
                         <div className="contract-detail-page__heading-group">
-                            <AppAnchor className="contract-detail-page__back" to="/contracts">
+                            <AppAnchor className="contract-detail-page__back" state={contractsBackState} to="/contracts">
                                 <span aria-hidden="true" className="big-icon"><s-icon type="arrow-left" size="large"></s-icon></span>
                             </AppAnchor>
 
