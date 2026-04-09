@@ -12,6 +12,21 @@ use Throwable;
 
 class ShopifyContractService
 {
+    public function normalizeContractId(string $contractId): string
+    {
+        $trimmedContractId = trim($contractId);
+
+        if ($trimmedContractId === '' || Str::startsWith($trimmedContractId, 'gid://shopify/SubscriptionContract/')) {
+            return $trimmedContractId;
+        }
+
+        if (preg_match('/^\d+$/', $trimmedContractId) === 1) {
+            return "gid://shopify/SubscriptionContract/{$trimmedContractId}";
+        }
+
+        return $trimmedContractId;
+    }
+
     public function getContracts(User $shop, int $limit = 25): Collection
     {
         $response = $shop->api()->graph(
@@ -82,6 +97,7 @@ query GetSubscriptionContracts($first: Int!) {
       lines(first: 10) {
         nodes {
           id
+          variantId
           title
           quantity
           currentPrice {
@@ -101,6 +117,7 @@ query GetSubscriptionContracts($first: Int!) {
         id
         name
         createdAt
+        paymentGatewayNames
       }
       orders(first: 5, reverse: true) {
         nodes {
@@ -132,7 +149,9 @@ GRAPHQL,
      */
     public function getContract(User $shop, string $contractId): ?array
     {
-        if ($contractId === '') {
+        $normalizedContractId = $this->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
             return null;
         }
 
@@ -200,9 +219,10 @@ query GetSubscriptionContract($id: ID!) {
         }
       }
     }
-    lines(first: 25) {
+      lines(first: 25) {
       nodes {
         id
+        variantId
         title
         quantity
         currentPrice {
@@ -222,6 +242,7 @@ query GetSubscriptionContract($id: ID!) {
       id
       name
       createdAt
+      paymentGatewayNames
     }
     orders(first: 10, reverse: true) {
       nodes {
@@ -234,7 +255,7 @@ query GetSubscriptionContract($id: ID!) {
 }
 GRAPHQL,
             [
-                'id' => $contractId,
+                'id' => $normalizedContractId,
             ]
         );
 
@@ -243,7 +264,13 @@ GRAPHQL,
 
         $contract = data_get($body, 'data.subscriptionContract');
 
-        return is_array($contract) ? $this->mapContract($contract) : null;
+        if (! is_array($contract)) {
+            return null;
+        }
+
+        $contract = $this->attachVariantData($shop, $contract);
+
+        return $this->mapContract($contract);
     }
 
     /**
@@ -251,7 +278,9 @@ GRAPHQL,
      */
     public function cancelContract(User $shop, string $contractId): ?array
     {
-        if ($contractId === '') {
+        $normalizedContractId = $this->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
             return null;
         }
 
@@ -323,6 +352,7 @@ mutation CancelSubscriptionContract($subscriptionContractId: ID!) {
       lines(first: 25) {
         nodes {
           id
+          variantId
           title
           quantity
           currentPrice {
@@ -342,6 +372,7 @@ mutation CancelSubscriptionContract($subscriptionContractId: ID!) {
         id
         name
         createdAt
+        paymentGatewayNames
       }
       orders(first: 10, reverse: true) {
         nodes {
@@ -359,7 +390,7 @@ mutation CancelSubscriptionContract($subscriptionContractId: ID!) {
 }
 GRAPHQL,
             [
-                'subscriptionContractId' => $contractId,
+                'subscriptionContractId' => $normalizedContractId,
             ]
         );
 
@@ -416,6 +447,7 @@ GRAPHQL,
         $effectiveSubtotal = $discountedSubtotal > 0 ? $discountedSubtotal : $lineSubtotal;
         $shippingTotal = (float) data_get($contract, 'deliveryPrice.amount', 0);
         $discountTotal = max($lineSubtotal - $effectiveSubtotal, 0);
+        $taxTotal = 0.0;
         $grandTotal = $effectiveSubtotal + $shippingTotal;
         $originOrderName = (string) data_get($contract, 'originOrder.name', data_get($contract, 'orders.nodes.0.name', ''));
         $originOrderCreatedAt = (string) data_get($contract, 'originOrder.createdAt', data_get($contract, 'orders.nodes.0.createdAt', data_get($contract, 'createdAt', '')));
@@ -426,6 +458,10 @@ GRAPHQL,
         $lineItems = $this->lineItems($lines, $currencyCode);
         $addressLines = $this->addressLines($contract);
         $orderHistory = $this->orderHistory($contract);
+        $paymentGatewayNames = collect(data_get($contract, 'originOrder.paymentGatewayNames', []))
+            ->filter(fn (mixed $gatewayName): bool => is_string($gatewayName) && $gatewayName !== '')
+            ->values()
+            ->all();
 
         return [
             'id' => (string) data_get($contract, 'id', ''),
@@ -438,6 +474,7 @@ GRAPHQL,
             'planId' => null,
             'plan' => (string) data_get($firstLine, 'sellingPlanName', $deliveryFrequency),
             'nextOrder' => $this->formatDate($nextBillingDate),
+            'nextBillingDate' => $nextBillingDate,
             'amount' => $this->formatMoney($grandTotal, $currencyCode),
             'amountValue' => round($grandTotal, 2),
             'currencyCode' => $currencyCode,
@@ -446,21 +483,27 @@ GRAPHQL,
             'createdAt' => $createdAt,
             'orderDate' => $this->formatDate($originOrderCreatedAt),
             'orderNumber' => $originOrderName !== '' ? $originOrderName : 'Unavailable',
-            'productTitle' => (string) data_get($firstLine, 'title', 'Subscription product'),
+            'productId' => (string) data_get($firstLine, 'productId', ''),
+            'productTitle' => (string) data_get($firstLine, 'productTitle', data_get($firstLine, 'title', 'Subscription product')),
             'productSubtitle' => (string) data_get($firstLine, 'variantTitle', data_get($firstLine, 'sellingPlanName', $deliveryFrequency)),
+            'productImageUrl' => (string) data_get($firstLine, 'imageUrl', data_get($firstLine, 'productImageUrl', '')),
             'productPrice' => $this->formatMoney((float) data_get($firstLine, 'currentPrice.amount', 0), $currencyCode),
             'quantity' => (string) data_get($firstLine, 'quantity', '1'),
             'lineTotal' => $this->formatMoney((float) data_get($firstLine, 'lineDiscountedPrice.amount', (float) data_get($firstLine, 'currentPrice.amount', 0) * (int) data_get($firstLine, 'quantity', 0)), $currencyCode),
-            'oneTimePurchasePrice' => 'Unavailable',
+            'oneTimePurchasePrice' => $this->formatMoney($lineSubtotal, $currencyCode),
             'discount' => $discountTotal > 0 ? $this->formatMoney($discountTotal, $currencyCode).' off' : 'No discount',
             'lineItems' => $lineItems,
-            'paymentSummary' => $this->paymentSummary($lineSubtotal, $discountTotal, $shippingTotal, $grandTotal, $currencyCode),
-            'paymentMethod' => [
-                'brand' => '?',
-                'label' => 'Managed in Shopify',
-                'expiry' => 'Payment details unavailable',
-            ],
-            'upcomingOrders' => $nextBillingDate !== '' ? [$this->formatDate($nextBillingDate)] : [],
+            'paymentSummary' => $this->paymentSummary(
+                $lineSubtotal,
+                $discountTotal,
+                $shippingTotal,
+                $taxTotal,
+                $grandTotal,
+                $currencyCode,
+                (string) data_get($contract, 'deliveryMethod.shippingOption.title', data_get($contract, 'deliveryMethod.localDeliveryOption.title', ''))
+            ),
+            'paymentMethod' => $this->paymentMethodDetails($paymentGatewayNames, $updatedAt),
+            'upcomingOrders' => $this->upcomingOrders($nextBillingDate, $contract),
             'orderHistory' => $orderHistory,
             'deliveryMethod' => $this->deliveryMethodDetails($contract, $addressLines),
             'createdAtLabel' => $this->formatDate($createdAt),
@@ -468,6 +511,82 @@ GRAPHQL,
             'timelineDate' => $this->formatDate($updatedAt),
             'timeline' => $this->timeline($createdAt, $updatedAt, (string) data_get($contract, 'status', '')),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $contract
+     * @return array<string, mixed>
+     */
+    private function attachVariantData(User $shop, array $contract): array
+    {
+        $variantIds = collect(data_get($contract, 'lines.nodes', []))
+            ->filter(fn (mixed $line): bool => is_array($line))
+            ->pluck('variantId')
+            ->filter(fn (mixed $variantId): bool => is_string($variantId) && $variantId !== '')
+            ->values()
+            ->all();
+
+        if ($variantIds === []) {
+            return $contract;
+        }
+
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+query GetContractLineVariants($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on ProductVariant {
+      id
+      title
+      image {
+        url
+      }
+      product {
+        id
+        title
+        featuredImage {
+          url
+        }
+      }
+    }
+  }
+}
+GRAPHQL,
+            [
+                'ids' => $variantIds,
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $this->assertNoErrors($body);
+
+        $variantsById = collect(data_get($body, 'data.nodes', []))
+            ->filter(fn (mixed $variant): bool => is_array($variant) && filled($variant['id'] ?? null))
+            ->keyBy(fn (array $variant): string => (string) $variant['id']);
+
+        $lines = collect(data_get($contract, 'lines.nodes', []))
+            ->map(function (mixed $line) use ($variantsById): mixed {
+                if (! is_array($line)) {
+                    return $line;
+                }
+
+                $variant = $variantsById->get((string) ($line['variantId'] ?? ''));
+
+                if (! is_array($variant)) {
+                    return $line;
+                }
+
+                $line['imageUrl'] = (string) data_get($variant, 'image.url', data_get($variant, 'product.featuredImage.url', ''));
+                $line['productId'] = (string) data_get($variant, 'product.id', '');
+                $line['productTitle'] = (string) data_get($variant, 'product.title', data_get($line, 'title', 'Subscription product'));
+                $line['variantTitle'] = (string) data_get($line, 'variantTitle', data_get($variant, 'title', 'Default Title'));
+
+                return $line;
+            })
+            ->all();
+
+        data_set($contract, 'lines.nodes', $lines);
+
+        return $contract;
     }
 
     /**
@@ -528,10 +647,13 @@ GRAPHQL,
             'productPrice' => $contract->amount,
             'quantity' => '1',
             'lineTotal' => $contract->amount,
-            'oneTimePurchasePrice' => 'Imported by CSV',
+            'oneTimePurchasePrice' => $contract->amount,
             'discount' => 'Imported by CSV',
             'lineItems' => $lineItems,
             'paymentSummary' => [
+                ['label' => 'Subtotal', 'value' => $contract->amount],
+                ['label' => 'Shipping', 'value' => $this->formatMoney(0, $contract->currency_code), 'note' => (string) ($firstRow['delivery_method_type'] ?? 'Standard')],
+                ['label' => 'Tax', 'value' => $this->formatMoney(0, $contract->currency_code)],
                 ['label' => 'Total', 'value' => $contract->amount],
             ],
             'paymentMethod' => [
@@ -539,7 +661,16 @@ GRAPHQL,
                 'label' => 'Imported by CSV',
                 'expiry' => 'Imported by CSV',
             ],
-            'upcomingOrders' => filled($firstRow['upcoming_billing_date'] ?? null) ? [$this->formatDate((string) $firstRow['upcoming_billing_date'])] : [],
+            'upcomingOrders' => $this->upcomingOrders((string) ($firstRow['upcoming_billing_date'] ?? ''), [
+                'deliveryPolicy' => [
+                    'intervalCount' => (int) $contract->delivery_interval_count,
+                    'interval' => (string) $contract->delivery_interval,
+                ],
+                'billingPolicy' => [
+                    'intervalCount' => (int) $contract->delivery_interval_count,
+                    'interval' => (string) $contract->delivery_interval,
+                ],
+            ]),
             'orderHistory' => [],
             'deliveryMethod' => [
                 'type' => 'Imported by CSV',
@@ -575,11 +706,18 @@ GRAPHQL,
 
                 return [
                     'id' => (string) data_get($line, 'id', Str::uuid()->toString()),
+                    'variantId' => (string) data_get($line, 'variantId', ''),
+                    'productId' => (string) data_get($line, 'productId', ''),
                     'title' => (string) data_get($line, 'title', 'Subscription item'),
+                    'productTitle' => (string) data_get($line, 'productTitle', data_get($line, 'title', 'Subscription item')),
                     'subtitle' => (string) data_get($line, 'variantTitle', data_get($line, 'sellingPlanName', 'Subscription')),
+                    'imageUrl' => (string) data_get($line, 'imageUrl', ''),
                     'quantity' => (string) $quantity,
                     'unitPrice' => $this->formatMoney($unitPrice, $currencyCode),
+                    'oneTimePurchasePrice' => $this->formatMoney($unitPrice * $quantity, $currencyCode),
                     'total' => $this->formatMoney($lineTotal, $currencyCode),
+                    'sellingPlanId' => (string) data_get($line, 'sellingPlanId', ''),
+                    'sellingPlanName' => (string) data_get($line, 'sellingPlanName', ''),
                 ];
             })
             ->all();
@@ -708,7 +846,7 @@ GRAPHQL,
         $segments = explode('/', $contractId);
         $numericId = trim((string) end($segments));
 
-        return $numericId !== '' ? "SC-{$numericId}" : 'Subscription contract';
+        return $numericId !== '' ? $numericId : 'Subscription contract';
     }
 
     private function displayStatus(string $status): string
@@ -801,8 +939,15 @@ GRAPHQL,
     /**
      * @return array<int, array{label: string, value: string}>
      */
-    private function paymentSummary(float $lineSubtotal, float $discountTotal, float $shippingTotal, float $grandTotal, string $currencyCode): array
-    {
+    private function paymentSummary(
+        float $lineSubtotal,
+        float $discountTotal,
+        float $shippingTotal,
+        float $taxTotal,
+        float $grandTotal,
+        string $currencyCode,
+        string $shippingMethodLabel = ''
+    ): array {
         $summary = [
             [
                 'label' => 'Subtotal',
@@ -819,7 +964,13 @@ GRAPHQL,
 
         $summary[] = [
             'label' => 'Shipping',
+            'note' => $shippingMethodLabel !== '' ? $shippingMethodLabel : 'Standard',
             'value' => $this->formatMoney($shippingTotal, $currencyCode),
+        ];
+
+        $summary[] = [
+            'label' => 'Tax',
+            'value' => $this->formatMoney($taxTotal, $currencyCode),
         ];
 
         $summary[] = [
@@ -828,6 +979,56 @@ GRAPHQL,
         ];
 
         return $summary;
+    }
+
+    /**
+     * @param  array<int, string>  $paymentGatewayNames
+     * @return array{brand: string, label: string, expiry: string}
+     */
+    private function paymentMethodDetails(array $paymentGatewayNames, string $updatedAt): array
+    {
+        $gatewayName = $paymentGatewayNames[0] ?? 'Managed in Shopify';
+        $shortCode = Str::upper(Str::substr(preg_replace('/[^A-Za-z0-9]/', '', $gatewayName) ?? 'PM', 0, 1));
+
+        return [
+            'brand' => $shortCode !== '' ? $shortCode : '?',
+            'label' => $gatewayName,
+            'expiry' => $updatedAt !== '' ? 'Last updated '.$this->formatDate($updatedAt) : 'Payment details unavailable',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $contract
+     * @return array<int, string>
+     */
+    private function upcomingOrders(string $nextBillingDate, array $contract, int $limit = 6): array
+    {
+        if ($nextBillingDate === '') {
+            return [];
+        }
+
+        try {
+            $nextDate = Carbon::parse($nextBillingDate);
+        } catch (Throwable) {
+            return [];
+        }
+
+        $dates = [];
+        $intervalCount = max((int) data_get($contract, 'deliveryPolicy.intervalCount', data_get($contract, 'billingPolicy.intervalCount', 1)), 1);
+        $interval = Str::upper((string) data_get($contract, 'deliveryPolicy.interval', data_get($contract, 'billingPolicy.interval', 'MONTH')));
+
+        for ($index = 0; $index < $limit; $index++) {
+            $dates[] = $nextDate->copy()->format('F j, Y');
+
+            $nextDate = match ($interval) {
+                'DAY' => $nextDate->copy()->addDays($intervalCount),
+                'WEEK' => $nextDate->copy()->addWeeks($intervalCount),
+                'YEAR' => $nextDate->copy()->addYears($intervalCount),
+                default => $nextDate->copy()->addMonthsNoOverflow($intervalCount),
+            };
+        }
+
+        return $dates;
     }
 
     /**

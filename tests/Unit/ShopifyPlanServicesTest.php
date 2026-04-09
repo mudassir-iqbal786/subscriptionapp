@@ -19,7 +19,34 @@ class ShopifyPlanServicesTest extends TestCase
             'summary' => 'Summary',
             'options' => ['Delivery frequency'],
             'products' => [
-                'nodes' => [],
+                'nodes' => [
+                    [
+                        'id' => 'gid://shopify/Product/1',
+                        'title' => 'Coffee',
+                        'totalVariants' => 2,
+                        'featuredImage' => [
+                            'url' => 'https://example.com/product.jpg',
+                        ],
+                    ],
+                ],
+            ],
+            'productVariants' => [
+                'nodes' => [
+                    [
+                        'id' => 'gid://shopify/ProductVariant/10',
+                        'title' => 'Dark Roast',
+                        'image' => [
+                            'url' => 'https://example.com/variant.jpg',
+                        ],
+                        'product' => [
+                            'id' => 'gid://shopify/Product/1',
+                            'title' => 'Coffee',
+                            'featuredImage' => [
+                                'url' => 'https://example.com/product.jpg',
+                            ],
+                        ],
+                    ],
+                ],
             ],
             'sellingPlans' => [
                 'nodes' => [
@@ -58,6 +85,8 @@ class ShopifyPlanServicesTest extends TestCase
         ]);
 
         $plan = $mappedPlan['plans'][0];
+        $product = $mappedPlan['products'][0];
+        $productVariant = $mappedPlan['productVariants'][0];
 
         $this->assertSame('2', $plan['paymentFrequencyValue']);
         $this->assertSame('Weeks', $plan['paymentFrequencyUnit']);
@@ -67,5 +96,8 @@ class ShopifyPlanServicesTest extends TestCase
         $this->assertSame('Percentage off', $plan['discountType']);
         $this->assertSame('15', $plan['percentageOff']);
         $this->assertCount(1, $plan['pricingPolicies']);
+        $this->assertSame('Coffee', $product['title']);
+        $this->assertSame('Dark Roast', $productVariant['title']);
+        $this->assertSame('gid://shopify/Product/1', $productVariant['productId']);
     }
 }

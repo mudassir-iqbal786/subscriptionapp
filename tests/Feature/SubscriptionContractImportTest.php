@@ -80,6 +80,57 @@ CSV),
             ->assertJsonPath('contracts.0.isImported', true);
     }
 
+    public function test_contracts_index_reports_pagination_metadata_for_additional_pages(): void
+    {
+        $user = User::factory()->create();
+
+        ImportedSubscriptionContract::factory()->create([
+            'user_id' => $user->id,
+            'handle' => 'contract-one',
+        ]);
+        ImportedSubscriptionContract::factory()->create([
+            'user_id' => $user->id,
+            'handle' => 'contract-two',
+        ]);
+
+        $service = Mockery::mock(ShopifyContractService::class);
+        $service->shouldReceive('getContracts')->twice()->andReturn(collect());
+        $service->shouldReceive('mapImportedContract')->times(4)->andReturnUsing(
+            fn (ImportedSubscriptionContract $contract): array => [
+                'id' => "imported-{$contract->handle}",
+                'displayId' => $contract->handle,
+                'customer' => [
+                    'name' => $contract->customer_name,
+                ],
+                'plan' => $contract->plan_name,
+                'amount' => $contract->amount,
+                'deliveryFrequency' => $contract->delivery_frequency,
+                'status' => $contract->status,
+                'isImported' => true,
+            ]
+        );
+        $this->app->instance(ShopifyContractService::class, $service);
+
+        $this->withoutMiddleware(VerifyShopify::class);
+
+        $firstPageResponse = $this->actingAs($user)->getJson('/api/contracts?perPage=1&page=1');
+        $secondPageResponse = $this->actingAs($user)->getJson('/api/contracts?perPage=1&page=2');
+
+        $firstPageResponse
+            ->assertOk()
+            ->assertJsonPath('contracts.0.displayId', 'contract-one')
+            ->assertJsonPath('pagination.hasNextPage', true)
+            ->assertJsonPath('pagination.page', 1)
+            ->assertJsonPath('pagination.perPage', 1);
+
+        $secondPageResponse
+            ->assertOk()
+            ->assertJsonPath('contracts.0.displayId', 'contract-two')
+            ->assertJsonPath('pagination.hasNextPage', false)
+            ->assertJsonPath('pagination.page', 2)
+            ->assertJsonPath('pagination.perPage', 1);
+    }
+
     public function test_it_validates_that_a_csv_file_is_uploaded(): void
     {
         $user = User::factory()->create();

@@ -26,9 +26,15 @@ query GetSellingPlans($first: Int!, $query: String!) {
           id
         }
       }
+      productVariants(first: 25) {
+        nodes {
+          id
+        }
+      }
       sellingPlans(first: 10) {
         nodes {
           id
+          createdAt
           name
           description
           options
@@ -99,7 +105,7 @@ query GetSellingPlans($first: Int!, $query: String!) {
 GRAPHQL,
             [
                 'first' => $limit,
-                'query' => 'app_id:ALL category:SUBSCRIPTION',
+                'query' => 'app_id:CURRENT category:SUBSCRIPTION',
             ]
         );
 
@@ -114,8 +120,10 @@ GRAPHQL,
                     'id' => $group['id'],
                     'appId' => $group['appId'] ?? null,
                     'name' => $group['name'],
+                    'createdAt' => data_get($group, 'sellingPlans.nodes.0.createdAt'),
+                    'updatedAt' => data_get($group, 'sellingPlans.nodes.0.createdAt'),
                     'options' => $group['options'] ?? [],
-                    'productCount' => count($group['products']['nodes'] ?? []),
+                    'productCount' => count($group['products']['nodes'] ?? []) + count($group['productVariants']['nodes'] ?? []),
                     'firstProductId' => data_get($group, 'products.nodes.0.id'),
                     'plans' => collect($group['sellingPlans']['nodes'] ?? [])
                         ->map(fn (array $plan): array => $this->mapSellingPlan($plan))
@@ -152,6 +160,22 @@ query GetSellingPlanGroup($id: ID!) {
           totalVariants
           featuredImage {
             url
+          }
+        }
+      }
+      productVariants(first: 100) {
+        nodes {
+          id
+          title
+          image {
+            url
+          }
+          product {
+            id
+            title
+            featuredImage {
+              url
+            }
           }
         }
       }
@@ -252,6 +276,10 @@ GRAPHQL,
             ->pluck('id')
             ->filter()
             ->values();
+        $currentProductVariantIds = collect($existingGroup['productVariants']['nodes'] ?? [])
+            ->pluck('id')
+            ->filter()
+            ->values();
 
         $payloadOptions = collect($payload['options']);
         $payloadExistingOptions = $payloadOptions
@@ -307,7 +335,11 @@ GRAPHQL,
 
         $this->assertNoErrors($this->responseBody($response), data_get($updatePayload, 'userErrors', []));
 
-        $nextProductIds = collect($payload['products'])
+        $nextProductIds = collect($payload['products'] ?? [])
+            ->pluck('id')
+            ->filter()
+            ->values();
+        $nextProductVariantIds = collect($payload['productVariants'] ?? [])
             ->pluck('id')
             ->filter()
             ->values();
@@ -319,6 +351,14 @@ GRAPHQL,
 
         $productIdsToRemove = $currentProductIds
             ->diff($nextProductIds)
+            ->values()
+            ->all();
+        $productVariantIdsToAdd = $nextProductVariantIds
+            ->diff($currentProductVariantIds)
+            ->values()
+            ->all();
+        $productVariantIdsToRemove = $currentProductVariantIds
+            ->diff($nextProductVariantIds)
             ->values()
             ->all();
 
@@ -362,6 +402,48 @@ GRAPHQL,
             );
 
             $this->assertNoErrors($this->responseBody($removeResponse), data_get($this->responseBody($removeResponse), 'data.sellingPlanGroupRemoveProducts.userErrors', []));
+        }
+
+        if ($productVariantIdsToAdd !== []) {
+            $addVariantResponse = $shop->api()->graph(
+                <<<'GRAPHQL'
+mutation AddProductVariantsToSellingPlanGroup($id: ID!, $productVariantIds: [ID!]!) {
+  sellingPlanGroupAddProductVariants(id: $id, productVariantIds: $productVariantIds) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+GRAPHQL,
+                [
+                    'id' => $payload['planId'],
+                    'productVariantIds' => $productVariantIdsToAdd,
+                ]
+            );
+
+            $this->assertNoErrors($this->responseBody($addVariantResponse), data_get($this->responseBody($addVariantResponse), 'data.sellingPlanGroupAddProductVariants.userErrors', []));
+        }
+
+        if ($productVariantIdsToRemove !== []) {
+            $removeVariantResponse = $shop->api()->graph(
+                <<<'GRAPHQL'
+mutation RemoveProductVariantsFromSellingPlanGroup($id: ID!, $productVariantIds: [ID!]!) {
+  sellingPlanGroupRemoveProductVariants(id: $id, productVariantIds: $productVariantIds) {
+    userErrors {
+      field
+      message
+    }
+  }
+}
+GRAPHQL,
+                [
+                    'id' => $payload['planId'],
+                    'productVariantIds' => $productVariantIdsToRemove,
+                ]
+            );
+
+            $this->assertNoErrors($this->responseBody($removeVariantResponse), data_get($this->responseBody($removeVariantResponse), 'data.sellingPlanGroupRemoveProductVariants.userErrors', []));
         }
 
         $updatedGroup = $this->getPlan($shop, $payload['planId']);
@@ -439,7 +521,7 @@ GRAPHQL,
                 $pricingPolicies = $this->buildPricingPolicies($discountType, $option['percentageOff'] ?? null);
 
                 $sellingPlan = [
-                    'name' => $title,
+                    'name' => $this->sellingPlanName($title, $optionLabel),
                     'description' => $internalDescription ?: $optionLabel,
                     'options' => [$optionLabel],
                     'position' => $index + 1,
@@ -526,6 +608,9 @@ GRAPHQL,
             'products' => collect($group['products']['nodes'] ?? [])
                 ->map(fn ($product): array => $this->mapProduct($product))
                 ->values(),
+            'productVariants' => collect($group['productVariants']['nodes'] ?? [])
+                ->map(fn ($variant): array => $this->mapProductVariant($variant))
+                ->values(),
             'plans' => collect($group['sellingPlans']['nodes'] ?? [])
                 ->map(fn (array $plan): array => $this->mapSellingPlan($plan))
                 ->values(),
@@ -576,6 +661,22 @@ GRAPHQL,
             'variants' => $variantCount === 1 ? '1 variant available' : "{$variantCount} variants available",
             'imageUrl' => data_get($product, 'featuredImage.url'),
             'swatch' => $this->makeSwatch((string) data_get($product, 'id')),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $variant
+     * @return array<string, mixed>
+     */
+    private function mapProductVariant(array $variant): array
+    {
+        return [
+            'id' => (string) data_get($variant, 'id'),
+            'title' => (string) data_get($variant, 'title'),
+            'productId' => (string) data_get($variant, 'product.id'),
+            'productTitle' => (string) data_get($variant, 'product.title'),
+            'imageUrl' => data_get($variant, 'image.url', data_get($variant, 'product.featuredImage.url')),
+            'swatch' => $this->makeSwatch((string) data_get($variant, 'id')),
         ];
     }
 
@@ -691,6 +792,17 @@ GRAPHQL,
         $labelUnit = $frequencyValue === 1 ? $singularUnit : Str::plural($singularUnit);
 
         return "Every {$frequencyValue} {$labelUnit}";
+    }
+
+    private function sellingPlanName(string $title, string $optionLabel): string
+    {
+        $normalizedTitle = trim($title);
+
+        if ($normalizedTitle === '') {
+            return $optionLabel;
+        }
+
+        return "{$normalizedTitle} - {$optionLabel}";
     }
 
     private function normalizeShopifyErrorMessage(string $message): string

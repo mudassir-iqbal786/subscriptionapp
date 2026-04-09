@@ -7,6 +7,9 @@
     <meta name="shopify-api-key" content="{{ config('shopify-app.api_key') }}">
     <meta name="shopify-theme-block-handle" content="{{ config('shopify-app.theme_block_handle') }}">
     <meta name="shopify-subscription-management-settings-url" content="{{ config('shopify-app.subscription_management_settings_url') }}">
+    <meta name="pusher-app-key" content="{{ config('broadcasting.connections.pusher.key', '') }}">
+    <meta name="pusher-app-cluster" content="{{ config('broadcasting.connections.pusher.options.cluster', '') }}">
+    <meta name="contracts-broadcast-channel" content="contracts.{{ sha1(strtolower((string) (auth()->user()?->getDomain()?->toNative() ?? request()->query('shop', '')))) }}">
     <title>{{ config('app.name', 'Shopify App') }}</title>
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>

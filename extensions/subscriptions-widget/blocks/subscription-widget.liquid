@@ -8,6 +8,8 @@
   endif
 %}
 
+{% comment %}{{ subscription_product.variants | json }}{% endcomment %}
+
 {% if has_selling_plans %}
   <div class="subscription-widget" data-subscription-widget {{ block.shopify_attributes }}>
     <div class="subscription-widget__header">
@@ -79,8 +81,9 @@
             </div>
 
             <div class="subscription-widget__price">
+              <span class="subscription-widget__price-compare" data-price-compare></span>
+              <span class="subscription-widget__price-separator" data-price-separator hidden>-</span>
               <span class="subscription-widget__price-current" data-price-current></span>
-              <span class="subscription-widget__price-compare" data-price-compare hidden></span>
             </div>
           </label>
         {% endfor %}

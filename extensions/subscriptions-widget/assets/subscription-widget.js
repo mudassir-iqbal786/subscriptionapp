@@ -52,10 +52,60 @@
       input = document.createElement("input");
       input.type = "hidden";
       input.name = "selling_plan";
+      input.dataset.subscriptionWidgetSellingPlan = "true";
       form.appendChild(input);
     }
 
+    input.dataset.subscriptionWidgetSellingPlan = "true";
+
     return input;
+  }
+
+  function getConflictingPurchaseInputs(container, form) {
+    const scope = form || container.closest(".shopify-section") || container.parentElement;
+
+    if (!scope) {
+      return [];
+    }
+
+    return Array.from(
+      scope.querySelectorAll(
+        'input[name="selling_plan"], select[name="selling_plan"], input[name*="purchase_option"], input[name*="selling_plan"]'
+      )
+    ).filter((input) => {
+      if (container.contains(input)) {
+        return false;
+      }
+
+      if (input.dataset.subscriptionWidgetSellingPlan === "true") {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  function hideDefaultPurchaseOptions(container, form) {
+    const selectors = [
+      ".product-form__input",
+      ".product__info-container > *",
+      "fieldset",
+      ".shopify-product-form > *",
+      "form > div",
+      "label"
+    ];
+
+    getConflictingPurchaseInputs(container, form).forEach((input) => {
+      input.disabled = true;
+
+      const wrapper = selectors
+        .map((selector) => input.closest(selector))
+        .find((candidate) => candidate && !container.contains(candidate) && candidate !== form);
+
+      if (wrapper) {
+        wrapper.style.display = "none";
+      }
+    });
   }
 
   function formatMoney(cents, currencyCode) {
@@ -69,6 +119,67 @@
     } catch (error) {
       return amount.toFixed(2);
     }
+  }
+
+  function getProductPriceTargets(container, form) {
+    const scope = container.closest(".shopify-section") || form || document;
+    const selectors = [
+      ".product__info-container .price",
+      ".product__info-container .price__container",
+      ".product__info-container [data-product-price]",
+      ".product-info .price",
+      ".product-info .price__container",
+      '[data-product-price]',
+      '.price',
+      '.product__price',
+      '.product .price',
+      '.price__container'
+    ];
+
+    const targets = selectors
+      .flatMap((selector) => Array.from(scope.querySelectorAll(selector)))
+      .filter((node, index, list) => {
+        if (container.contains(node)) {
+          return false;
+        }
+
+        if (form && !node.closest("form") && !node.closest(".product") && !node.closest(".product__info-container")) {
+          return false;
+        }
+
+        return list.indexOf(node) === index;
+      });
+
+    return targets.filter((node) => !targets.some((candidate) => candidate !== node && candidate.contains(node)));
+  }
+
+  function setMainPriceDisplay(priceTargets, allocation, variant) {
+    priceTargets.forEach((target) => {
+      if (!target.dataset.subscriptionWidgetOriginalHtml) {
+        target.dataset.subscriptionWidgetOriginalHtml = target.innerHTML;
+      }
+
+      if (!allocation || !variant) {
+        target.innerHTML = target.dataset.subscriptionWidgetOriginalHtml;
+        return;
+      }
+
+      const comparePrice = Number(allocation.compareAtPrice || variant.price || 0);
+      const currentPrice = Number(allocation.price || variant.price || 0);
+      const currencyCode = allocation.currencyCode || variant.currencyCode;
+
+      if (comparePrice > currentPrice) {
+        target.innerHTML = `
+          <span class="subscription-widget-main-price">
+            <del class="subscription-widget-main-price__compare">${formatMoney(comparePrice, currencyCode)}</del>
+            <span class="subscription-widget-main-price__separator"> - </span>
+            <span class="subscription-widget-main-price__current">${formatMoney(currentPrice, currencyCode)}</span>
+          </span>
+        `;
+      } else {
+        target.textContent = formatMoney(currentPrice, currencyCode);
+      }
+    });
   }
 
   function initWidget(container) {
@@ -85,6 +196,10 @@
     const plans = container.querySelector(".subscription-widget__plans");
     const oneTimePrice = container.querySelector("[data-one-time-price]");
     const note = container.querySelector("[data-subscription-note]");
+    const oneTimeInput = modeInputs.find((input) => input.value === "one-time") || null;
+    const subscriptionInput = modeInputs.find((input) => input.value === "subscription") || null;
+    const oneTimeCard = oneTimeInput?.closest("[data-mode-card]") || null;
+    const subscriptionCard = subscriptionInput?.closest("[data-mode-card]") || null;
 
     function currentVariantId() {
       const fallback = payload.selectedVariantId || "";
@@ -138,11 +253,20 @@
         }
       });
 
+      if (oneTimeCard) {
+        oneTimeCard.hidden = Boolean(requiresSellingPlan && hasPlans);
+      }
+
+      if (subscriptionCard) {
+        subscriptionCard.hidden = !hasPlans;
+      }
+
       planInputs.forEach((input) => {
         const allocation = allocationFor(input.value);
         const card = input.closest("[data-plan-card]");
         const current = card?.querySelector("[data-price-current]");
         const compare = card?.querySelector("[data-price-compare]");
+        const separator = card?.querySelector("[data-price-separator]");
         const badge = card?.querySelector("[data-price-badge]");
 
         input.disabled = !allocation;
@@ -165,8 +289,15 @@
           if (allocation.compareAtPrice > allocation.price) {
             compare.textContent = formatMoney(allocation.compareAtPrice, allocation.currencyCode);
             compare.hidden = false;
+            if (separator) {
+              separator.hidden = false;
+            }
           } else {
             compare.hidden = true;
+            compare.textContent = "";
+            if (separator) {
+              separator.hidden = true;
+            }
           }
         }
 
@@ -185,14 +316,10 @@
       }
 
       if (requiresSellingPlan) {
-        const subscriptionInput = modeInputs.find((input) => input.value === "subscription");
-
         if (subscriptionInput) {
           subscriptionInput.checked = true;
         }
       } else if (!hasPlans) {
-        const oneTimeInput = modeInputs.find((input) => input.value === "one-time");
-
         if (oneTimeInput) {
           oneTimeInput.checked = true;
         }
@@ -204,9 +331,17 @@
 
       const nextMode = modeInputs.find((input) => input.checked)?.value || "one-time";
       const activePlan = planInputs.find((input) => input.checked && !input.disabled);
+      const activeAllocation = activePlan ? allocationFor(activePlan.value) : null;
+      const priceTargets = getProductPriceTargets(container, form);
 
       if (sellingPlanInput) {
         sellingPlanInput.value = nextMode === "subscription" && activePlan ? String(activePlan.value) : "";
+      }
+
+      if (nextMode === "subscription" && activeAllocation) {
+        setMainPriceDisplay(priceTargets, activeAllocation, variant);
+      } else {
+        setMainPriceDisplay(priceTargets, null, variant);
       }
 
       if (note) {
@@ -218,7 +353,16 @@
 
     if (form) {
       form.addEventListener("change", sync);
+      form.addEventListener("submit", sync);
     }
+
+    const submitButtons = form
+      ? Array.from(form.querySelectorAll('[type="submit"], shopify-buy-it-now-button, .shopify-payment-button__button'))
+      : [];
+
+    submitButtons.forEach((button) => {
+      button.addEventListener("click", sync);
+    });
 
     const variantInput = getVariantInput(form);
 
@@ -228,6 +372,7 @@
     }
 
     sync();
+    hideDefaultPurchaseOptions(container, form);
   }
 
   document.addEventListener("DOMContentLoaded", function () {

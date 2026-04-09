@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { contractsQueryKey, fetchContracts, importContracts } from '../contractQueries.js';
 import { useAppNavigate } from '../navigation.jsx';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
+const contractsPageStateStorageKey = 'subscriptions-contracts-page-state';
 const contractCsvTemplate = `handle,upcoming_billing_date,customer_id,currency_code,status,cadence_interval,cadence_interval_count,customer_payment_method_id,delivery_price,delivery_method_type,delivery_address_first_name,delivery_address_last_name,delivery_address_address1,delivery_address_address2,delivery_address_city,delivery_address_province_code,delivery_address_country_code,delivery_address_company,delivery_address_zip,delivery_address_phone,delivery_local_delivery_phone,delivery_local_delivery_instructions,delivery_pickup_method_location_id,line_variant_id,line_quantity,line_current_price,line_selling_plan_id,line_selling_plan_name
 Example-beverage-contract,2024-04-12T17:00:00Z,6320530986896,USD,ACTIVE,MONTH,3,24e8c839c47ef47d30ad28346d130e74,0,SHIPPING,Jane,Doe,2470 Bedford Ave,,Buffalo,NY,US,,11226,,,,,53154087005812,1,50,3607724288,"Subscription, delivery every 3 months, save 10%"
 Example-beverage-contract,,,,,,,,,,,,,,,,,,,,,,,53174099004429,1,60,3607724288,"Subscription, delivery every 3 months, save 10%"
@@ -20,15 +23,154 @@ function getStatusTone(status) {
     return 'success';
 }
 
+function formatIsoDateForExport(value) {
+    if (!value || value === 'Unavailable') {
+        return '';
+    }
+
+    const timestamp = Date.parse(value);
+
+    if (Number.isNaN(timestamp)) {
+        return '';
+    }
+
+    return new Date(timestamp).toISOString();
+}
+
+function normalizeStatusForExport(status) {
+    if (!status) {
+        return '';
+    }
+
+    if (status === 'Canceled') {
+        return 'CANCELLED';
+    }
+
+    return String(status).toUpperCase();
+}
+
+function normalizeCadenceInterval(intervalLabel) {
+    const normalizedLabel = String(intervalLabel ?? '').toUpperCase();
+
+    if (normalizedLabel.startsWith('DAY')) {
+        return 'DAY';
+    }
+
+    if (normalizedLabel.startsWith('WEEK')) {
+        return 'WEEK';
+    }
+
+    if (normalizedLabel.startsWith('YEAR')) {
+        return 'YEAR';
+    }
+
+    return 'MONTH';
+}
+
+function parseDeliveryFrequency(deliveryFrequency) {
+    const match = String(deliveryFrequency ?? '').match(/Every\s+(\d+)\s+(\w+)/i);
+
+    if (!match) {
+        return {
+            cadence_interval: '',
+            cadence_interval_count: '',
+        };
+    }
+
+    return {
+        cadence_interval: normalizeCadenceInterval(match[2]),
+        cadence_interval_count: match[1],
+    };
+}
+
+function splitCustomerName(name) {
+    const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+
+    return {
+        firstName: parts[0] ?? '',
+        lastName: parts.slice(1).join(' '),
+    };
+}
+
+function extractAddressParts(addressLines = []) {
+    const [nameLine = '', address1 = '', address2 = '', cityLine = '', country = ''] = addressLines;
+    const { firstName, lastName } = splitCustomerName(nameLine);
+    const cityParts = String(cityLine).split(',').map((part) => part.trim()).filter(Boolean);
+
+    return {
+        delivery_address_first_name: firstName,
+        delivery_address_last_name: lastName,
+        delivery_address_address1: address1,
+        delivery_address_address2: address2,
+        delivery_address_city: cityParts[0] ?? '',
+        delivery_address_province_code: cityParts[1] ?? '',
+        delivery_address_zip: cityParts[2] ?? '',
+        delivery_address_country_code: country,
+    };
+}
+
+function normalizeDeliveryMethodType(type) {
+    if (!type) {
+        return '';
+    }
+
+    if (type === 'Local delivery') {
+        return 'LOCAL_DELIVERY';
+    }
+
+    if (type === 'Pickup') {
+        return 'PICKUP';
+    }
+
+    return 'SHIPPING';
+}
+
 function buildExportRows(contracts) {
-    return contracts.map((contract) => ({
-        contract: contract.displayId ?? contract.id ?? '',
-        customer: contract.customer?.name ?? '',
-        product: contract.plan ?? contract.productTitle ?? '',
-        price: contract.amount ?? '',
-        delivery_frequency: contract.deliveryFrequency ?? '',
-        status: contract.status ?? '',
-    }));
+    return contracts.flatMap((contract) => {
+        const cadence = parseDeliveryFrequency(contract.deliveryFrequency);
+        const address = extractAddressParts(contract.deliveryMethod?.addressLines ?? contract.customer?.addressLines ?? []);
+        const lineItems = contract.lineItems?.length
+            ? contract.lineItems
+            : [{
+                id: contract.id,
+                quantity: contract.quantity ?? '1',
+                unitPrice: contract.productPrice ?? '',
+                variantId: '',
+                sellingPlanId: '',
+                sellingPlanName: contract.plan ?? '',
+            }];
+
+        return lineItems.map((lineItem, index) => ({
+            handle: contract.id ?? '',
+            upcoming_billing_date: formatIsoDateForExport(contract.nextBillingDate ?? contract.createdAt),
+            customer_id: '',
+            currency_code: contract.currencyCode ?? '',
+            status: normalizeStatusForExport(contract.status),
+            cadence_interval: cadence.cadence_interval,
+            cadence_interval_count: cadence.cadence_interval_count,
+            customer_payment_method_id: '',
+            delivery_price: String(contract.deliveryMethod?.type === 'Shipping' ? (contract.paymentSummary?.find((item) => item.label === 'Shipping')?.value ?? '').replace(/[^\d.-]/g, '') : '0'),
+            delivery_method_type: normalizeDeliveryMethodType(contract.deliveryMethod?.type),
+            delivery_address_first_name: address.delivery_address_first_name,
+            delivery_address_last_name: address.delivery_address_last_name,
+            delivery_address_address1: address.delivery_address_address1,
+            delivery_address_address2: address.delivery_address_address2,
+            delivery_address_city: address.delivery_address_city,
+            delivery_address_province_code: address.delivery_address_province_code,
+            delivery_address_country_code: address.delivery_address_country_code,
+            delivery_address_company: '',
+            delivery_address_zip: address.delivery_address_zip,
+            delivery_address_phone: '',
+            delivery_local_delivery_phone: '',
+            delivery_local_delivery_instructions: '',
+            delivery_pickup_method_location_id: '',
+            line_variant_id: lineItem.variantId ?? '',
+            line_quantity: lineItem.quantity ?? '1',
+            line_current_price: String(lineItem.unitPrice ?? '').replace(/[^\d.-]/g, ''),
+            line_selling_plan_id: lineItem.sellingPlanId ?? '',
+            line_selling_plan_name: lineItem.sellingPlanName ?? lineItem.subtitle ?? contract.plan ?? '',
+        }));
+    });
 }
 
 function buildCsvContent(rows) {
@@ -59,14 +201,14 @@ function downloadFile(filename, content, mimeType = 'text/csv;charset=utf-8;') {
 }
 
 function getBulkActionButtonClass(action, isEnabled, activeBulkAction) {
-    const classes = ['contracts-table__action-button', `contracts-table__action-button--${action}`];
+    const classes = [''];
 
     if (isEnabled) {
-        classes.push('contracts-table__action-button--enabled');
+        classes.push('enabled');
     }
 
     if (activeBulkAction === action) {
-        classes.push('contracts-table__action-button--working');
+        classes.push('working');
     }
 
     return classes.join(' ');
@@ -74,28 +216,132 @@ function getBulkActionButtonClass(action, isEnabled, activeBulkAction) {
 
 export default function ContractsPage() {
     const navigateTo = useAppNavigate();
+    const storedPageState = (() => {
+        try {
+            return JSON.parse(window.sessionStorage.getItem(contractsPageStateStorageKey) ?? '{}');
+        } catch {
+            return {};
+        }
+    })();
+    const initialPage = Math.max(1, Number(storedPageState.page ?? 1) || 1);
+    const initialPageSize = [10, 25, 50].includes(Number(storedPageState.perPage))
+        ? Number(storedPageState.perPage)
+        : 10;
+    const initialFilter = ['All', 'Active', 'Paused', 'Canceled'].includes(storedPageState.filter ?? '')
+        ? storedPageState.filter
+        : 'All';
     const queryClient = useQueryClient();
     const exportModalRef = useRef(null);
     const importModalRef = useRef(null);
     const importFileInputRef = useRef(null);
-    const [activeFilter, setActiveFilter] = useState('All');
+    const notificationTimeoutRef = useRef(null);
+    const [activeFilter, setActiveFilter] = useState(initialFilter);
     const [selectedContractIds, setSelectedContractIds] = useState([]);
     const [selectedImportFile, setSelectedImportFile] = useState(null);
     const [importError, setImportError] = useState('');
     const [actionError, setActionError] = useState('');
+    const [liveNotification, setLiveNotification] = useState('');
     const [activeBulkAction, setActiveBulkAction] = useState('');
+    const [currentPage, setCurrentPage] = useState(initialPage);
+    const [pageSize, setPageSize] = useState(initialPageSize);
     const [exportScope, setExportScope] = useState('all');
     const [exportFormat, setExportFormat] = useState('excel');
 
-    const { data: contracts = [], error, isLoading } = useQuery({
-        queryKey: contractsQueryKey,
-        queryFn: fetchContracts,
+    const { data, error, isLoading } = useQuery({
+        queryKey: contractsQueryKey(currentPage, pageSize, activeFilter),
+        queryFn: () => fetchContracts(currentPage, pageSize, activeFilter),
     });
+    const contracts = data?.contracts ?? [];
+    const pagination = data?.pagination ?? {
+        page: currentPage,
+        perPage: pageSize,
+        hasPreviousPage: false,
+        hasNextPage: false,
+        from: 0,
+        to: 0,
+    };
+
+
+    useEffect(() => {
+        const pusherAppKey = document.querySelector('meta[name="pusher-app-key"]')?.getAttribute('content') ?? '';
+        const pusherAppCluster = document.querySelector('meta[name="pusher-app-cluster"]')?.getAttribute('content') ?? '';
+        const contractsBroadcastChannel = document.querySelector('meta[name="contracts-broadcast-channel"]')?.getAttribute('content') ?? '';
+
+        console.log('[ContractsPage] Live contracts init', {
+            hasPusherAppKey: pusherAppKey !== '',
+            pusherAppCluster,
+            contractsBroadcastChannel,
+        });
+
+        if (pusherAppKey === '' || pusherAppCluster === '' || contractsBroadcastChannel === '') {
+            console.warn('[ContractsPage] Live contracts listener skipped because Pusher config is missing.');
+            return undefined;
+        }
+
+        const echo = new Echo({
+            broadcaster: 'pusher',
+            client: new Pusher(pusherAppKey, {
+                cluster: pusherAppCluster,
+                forceTLS: true,
+            }),
+        });
+
+        const channel = echo.channel(contractsBroadcastChannel);
+
+        channel.subscribed(() => {
+            console.log('[ContractsPage] Subscribed to live contracts channel', contractsBroadcastChannel);
+        });
+
+        channel.error((channelError) => {
+            console.error('[ContractsPage] Live contracts channel error', channelError);
+        });
+
+        channel.listen('.contract.created', async (event) => {
+            console.log('[ContractsPage] Live contract event received', event);
+
+            const contractLabel = event?.contractId ? ` ${event.contractId}` : '';
+            const notificationMessage = `A new subscription contract${contractLabel} was received and the list was refreshed.`;
+
+            setLiveNotification(notificationMessage);
+            shopify.toast.show(notificationMessage);
+            // window.alert(notificationMessage);
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
+        });
+
+        return () => {
+            console.log('[ContractsPage] Leaving live contracts channel', contractsBroadcastChannel);
+            echo.leave(contractsBroadcastChannel);
+            echo.disconnect();
+        };
+    }, [queryClient]);
+
+    useEffect(() => {
+        if (liveNotification === '') {
+            if (notificationTimeoutRef.current !== null) {
+                window.clearTimeout(notificationTimeoutRef.current);
+                notificationTimeoutRef.current = null;
+            }
+
+            return undefined;
+        }
+
+        notificationTimeoutRef.current = window.setTimeout(() => {
+            setLiveNotification('');
+            notificationTimeoutRef.current = null;
+        }, 5000);
+
+        return () => {
+            if (notificationTimeoutRef.current !== null) {
+                window.clearTimeout(notificationTimeoutRef.current);
+                notificationTimeoutRef.current = null;
+            }
+        };
+    }, [liveNotification]);
 
     const importMutation = useMutation({
         mutationFn: importContracts,
         onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: contractsQueryKey });
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
             closeImportModal();
         },
         onError: (requestError) => {
@@ -103,13 +349,7 @@ export default function ContractsPage() {
         },
     });
 
-    const visibleContracts = contracts.filter((contract) => {
-        if (activeFilter === 'All') {
-            return true;
-        }
-
-        return contract.status === activeFilter;
-    });
+    const visibleContracts = contracts;
     const selectedVisibleContracts = visibleContracts.filter((contract) => selectedContractIds.includes(contract.id));
     const selectedActionableContracts = selectedVisibleContracts.filter((contract) => !contract.isImported);
     const allVisibleSelected = visibleContracts.length > 0 && selectedVisibleContracts.length === visibleContracts.length;
@@ -118,9 +358,24 @@ export default function ContractsPage() {
     const canPauseSelected = selectedActionableContracts.some((contract) => contract.status !== 'Paused' && contract.status !== 'Canceled');
     const canResumeSelected = selectedActionableContracts.some((contract) => contract.status === 'Paused');
     const canCancelSelected = selectedActionableContracts.some((contract) => contract.status !== 'Canceled');
+    const hasPreviousPage = pagination.hasPreviousPage;
+    const hasNextPage = pagination.hasNextPage;
+
+    useEffect(() => {
+        window.sessionStorage.setItem(contractsPageStateStorageKey, JSON.stringify({
+            page: currentPage,
+            perPage: pageSize,
+            filter: activeFilter,
+        }));
+    }, [activeFilter, currentPage, pageSize]);
 
     function handleRowNavigation(contractId) {
         navigateTo(`/contracts/detail/${encodeURIComponent(contractId)}`);
+    }
+
+    function handleFilterChange(filter) {
+        setActiveFilter(filter);
+        setCurrentPage(1);
     }
 
     function toggleContractSelection(contractId) {
@@ -204,6 +459,27 @@ export default function ContractsPage() {
         importFileInputRef.current?.click();
     }
 
+    function handlePreviousPage() {
+        if (!hasPreviousPage) {
+            return;
+        }
+
+        setCurrentPage((page) => page - 1);
+    }
+
+    function handleNextPage() {
+        if (!hasNextPage) {
+            return;
+        }
+
+        setCurrentPage((page) => page + 1);
+    }
+
+    function handlePageSizeChange(event) {
+        setPageSize(Number(event.currentTarget.value));
+        setCurrentPage(1);
+    }
+
     function handleImportFileChange(event) {
         const [file] = Array.from(event.target.files ?? []);
         setSelectedImportFile(file ?? null);
@@ -249,7 +525,7 @@ export default function ContractsPage() {
             );
 
             setSelectedContractIds([]);
-            await queryClient.invalidateQueries({ queryKey: contractsQueryKey });
+            await queryClient.invalidateQueries({ queryKey: ['contracts'] });
         } catch (requestError) {
             setActionError(requestError?.response?.data?.message ?? `Unable to ${action} the selected subscription contracts right now.`);
         } finally {
@@ -258,17 +534,17 @@ export default function ContractsPage() {
     }
 
     return (
-        <div className="contracts-page">
+        <s-page inlineSize="large">
             <div className="contracts-page__header">
                 <h1>Subscription contracts</h1>
 
                 <div className="contracts-page__actions">
-                    <button className="contracts-page__button" command="--show" commandFor="contracts-export-modal" onClick={openExportModal} type="button">
+                    <s-button className="" command="--show" commandFor="contracts-export-modal" onClick={openExportModal} type="button">
                         Export
-                    </button>
-                    <button className="contracts-page__button" command="--show" commandFor="contracts-import-modal" onClick={openImportModal} type="button">
+                    </s-button>
+                    <s-button className="" command="--show" commandFor="contracts-import-modal" onClick={openImportModal} type="button">
                         Import
-                    </button>
+                    </s-button>
                 </div>
             </div>
 
@@ -276,14 +552,16 @@ export default function ContractsPage() {
                 <div className="contracts-table-card__toolbar">
                     <div className="contracts-filter-tabs">
                         {['All', 'Active', 'Paused', 'Canceled'].map((filter) => (
-                            <button
-                                className={filter === activeFilter ? 'contracts-filter-tab contracts-filter-tab--active' : 'contracts-filter-tab'}
+                            <s-button
+                                // className={filter === activeFilter ? '' : ''}
+
+                                variant={filter === activeFilter ? 'primary' : ''}
                                 key={filter}
-                                onClick={() => setActiveFilter(filter)}
+                                onClick={() => handleFilterChange(filter)}
                                 type="button"
                             >
                                 {filter}
-                            </button>
+                            </s-button>
                         ))}
                     </div>
 
@@ -301,43 +579,43 @@ export default function ContractsPage() {
                                 <label className="contracts-table__check">
                                     <input checked={allVisibleSelected} onChange={toggleVisibleSelections} type="checkbox" />
                                 </label>
-                                <strong>{selectedCount} selected</strong>
+                                <s-heading>{selectedCount} selected</s-heading>
                             </div>
 
                             <div className="contracts-table__selection-actions">
-                                <button
+                                <s-button
                                     className={getBulkActionButtonClass('pause', canPauseSelected, activeBulkAction)}
                                     disabled={!canPauseSelected || activeBulkAction !== ''}
                                     onClick={() => handleBulkAction('pause')}
                                     type="button"
                                 >
                                     {activeBulkAction === 'pause' ? 'Pausing...' : 'Pause'}
-                                </button>
-                                <button
+                                </s-button>
+                                <s-button
                                     className={getBulkActionButtonClass('resume', canResumeSelected, activeBulkAction)}
                                     disabled={!canResumeSelected || activeBulkAction !== ''}
                                     onClick={() => handleBulkAction('resume')}
                                     type="button"
                                 >
                                     {activeBulkAction === 'resume' ? 'Resuming...' : 'Resume'}
-                                </button>
-                                <button
+                                </s-button>
+                                <s-button
                                     className={getBulkActionButtonClass('cancel', canCancelSelected, activeBulkAction)}
                                     disabled={!canCancelSelected || activeBulkAction !== ''}
                                     onClick={() => handleBulkAction('cancel')}
                                     type="button"
                                 >
                                     {activeBulkAction === 'cancel' ? 'Cancelling...' : 'Cancel'}
-                                </button>
-                                <button
-                                    className="contracts-table__action-button contracts-table__action-button--active"
+                                </s-button>
+                                <s-button
+                                    className=""
                                     command="--show"
                                     commandFor="contracts-export-modal"
                                     onClick={openExportModal}
                                     type="button"
                                 >
                                     Export
-                                </button>
+                                </s-button>
                             </div>
                         </div>
                     ) : (
@@ -386,18 +664,47 @@ export default function ContractsPage() {
                                           type="checkbox"
                                       />
                                   </label>
-                                  <strong>{contract.displayId ?? contract.id}</strong>
-                                  <span>{contract.customer?.name ?? 'Unknown customer'}</span>
-                                  <span>{contract.plan ?? contract.productTitle ?? 'Subscription plan'}</span>
-                                  <span>{contract.amount ?? 'N/A'}</span>
-                                  <span>{contract.deliveryFrequency ?? 'N/A'}</span>
+                                  <s-paragraph>{contract.displayId ?? contract.id}</s-paragraph>
+                                  <s-paragraph>{contract.customer?.name ?? 'Unknown customer'}</s-paragraph>
+                                  <s-paragraph>{contract.plan ?? contract.productTitle ?? 'Subscription plan'}</s-paragraph>
+                                  <s-paragraph>{contract.amount ?? 'N/A'}</s-paragraph>
+                                  <s-paragraph>{contract.deliveryFrequency ?? 'N/A'}</s-paragraph>
                                   <span>
-                                      <span className={`contracts-status-pill contracts-status-pill--${getStatusTone(contract.status)}`}>{contract.status}</span>
+                                      {/*<span className={`contracts-status-pill contracts-status-pill--${getStatusTone(contract.status)}`}>{contract.status}</span>*/}
+                                      <s-badge tone={getStatusTone(contract.status)}>{contract.status}</s-badge>
                                   </span>
                               </div>
                           ))
                         : null}
                 </div>
+
+                {!isLoading && !error && visibleContracts.length > 0 ? (
+                    <div className="contracts-table__pagination">
+                        <s-text>
+                            Showing {pagination.from}-{pagination.to}{hasNextPage ? '' : ` of ${pagination.to}`} contracts
+                        </s-text>
+
+                        <div className="contracts-table__pagination-controls">
+                            <label className="contracts-table__pagination-size">
+                                <s-paragraph>Per page</s-paragraph>
+                                <s-select onChange={handlePageSizeChange} value={String(pageSize)}>
+                                    <s-option value="10">10</s-option>
+                                    <s-option value="25">25</s-option>
+                                    <s-option value="50">50</s-option>
+                                </s-select>
+                            </label>
+
+                            <s-text>Page {pagination.page}</s-text>
+
+                            <s-button disabled={!hasPreviousPage} onClick={handlePreviousPage} type="button">
+                                Previous
+                            </s-button>
+                            <s-button disabled={!hasNextPage} onClick={handleNextPage} type="button">
+                                Next
+                            </s-button>
+                        </div>
+                    </div>
+                ) : null}
             </section>
 
             <div className="polaris-page-help">
@@ -479,6 +786,6 @@ export default function ContractsPage() {
                     </s-button>
                 </div>
             </s-modal>
-        </div>
+        </s-page>
     );
 }

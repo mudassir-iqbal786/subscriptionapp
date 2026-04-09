@@ -44,6 +44,9 @@ class ShopifyContractServiceTest extends TestCase
                 'nodes' => [
                     [
                         'id' => 'line-1',
+                        'productId' => 'gid://shopify/Product/44',
+                        'productTitle' => 'Gift Card Product',
+                        'imageUrl' => 'https://example.com/gift-card.png',
                         'title' => 'Gift Card',
                         'quantity' => 2,
                         'currentPrice' => [
@@ -69,7 +72,7 @@ class ShopifyContractServiceTest extends TestCase
             ],
         ]);
 
-        $this->assertSame('SC-593791907', $contract['displayId']);
+        $this->assertSame('593791907', $contract['displayId']);
         $this->assertSame('Ava Thompson', $contract['customer']['name']);
         $this->assertSame('Starter Delivery', $contract['plan']);
         $this->assertSame('$48.00', $contract['amount']);
@@ -77,10 +80,14 @@ class ShopifyContractServiceTest extends TestCase
         $this->assertSame('Every 1 week', $contract['deliveryFrequency']);
         $this->assertSame('$8.00 off', $contract['discount']);
         $this->assertSame('#1001', $contract['orderNumber']);
-        $this->assertCount(4, $contract['paymentSummary']);
+        $this->assertSame('Gift Card Product', $contract['productTitle']);
+        $this->assertSame('https://example.com/gift-card.png', $contract['productImageUrl']);
+        $this->assertCount(5, $contract['paymentSummary']);
         $this->assertSame('Shipping', $contract['deliveryMethod']['type']);
         $this->assertSame('Recurring shipment', $contract['deliveryMethod']['description']);
         $this->assertCount(1, $contract['lineItems']);
+        $this->assertSame('Gift Card Product', $contract['lineItems'][0]['productTitle']);
+        $this->assertSame('https://example.com/gift-card.png', $contract['lineItems'][0]['imageUrl']);
         $this->assertSame('$24.00', $contract['lineItems'][0]['unitPrice']);
         $this->assertSame('Subscription contract created', $contract['timeline'][0]['text']);
     }
@@ -116,6 +123,20 @@ class ShopifyContractServiceTest extends TestCase
         $this->assertSame(
             'Access denied for customer field. Required access: `read_customers` access scope. Access denied for orders field. Required access: `read_orders` access scope. Reinstall or re-authenticate the app after updating scopes.',
             $message
+        );
+    }
+
+    public function test_it_normalizes_numeric_subscription_contract_ids_to_shopify_gids(): void
+    {
+        $service = new ShopifyContractService;
+
+        $this->assertSame(
+            'gid://shopify/SubscriptionContract/26207453383',
+            $service->normalizeContractId('26207453383')
+        );
+        $this->assertSame(
+            'gid://shopify/SubscriptionContract/26207453383',
+            $service->normalizeContractId('gid://shopify/SubscriptionContract/26207453383')
         );
     }
 }

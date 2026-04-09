@@ -1,0 +1,7 @@
+{
+  "heading": "Abonnement confirme",
+  "title": "Merci pour votre abonnement",
+  "body": "Votre commande d’abonnement {{orderNumber}} est confirmee. Nous avons bien enregistre {{count}} article(s) d’abonnement, et les prochains renouvellements suivront la frequence de livraison choisie.",
+  "plan": "Formule selectionnee : {{plan}}",
+  "footer": "Nous nous occupons des livraisons recurrentes pour que vous puissiez simplement attendre la prochaine expedition."
+}

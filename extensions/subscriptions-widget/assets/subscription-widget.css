@@ -91,8 +91,9 @@
 }
 
 .subscription-widget__title {
-  font-weight: 700;
-  line-height: 1.35;
+  font-weight: 600;
+  line-height: 1;
+    font-size: 14px !important;
 }
 
 .subscription-widget__description {
@@ -103,10 +104,11 @@
 
 .subscription-widget__price {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: flex-end;
-  gap: 0.2rem;
+  gap: 0.35rem;
   text-align: right;
+  flex-wrap: wrap;
 }
 
 .subscription-widget__price-current {
@@ -116,8 +118,15 @@
 
 .subscription-widget__price-compare {
   color: #6b7280;
-  font-size: 0.82rem;
+  font-size: 0.98rem;
   text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.subscription-widget__price-separator {
+  color: #6b7280;
+  font-size: 0.98rem;
+  white-space: nowrap;
 }
 
 .subscription-widget__badge {
@@ -153,6 +162,26 @@
   color: #6b7280;
   font-size: 0.84rem;
   line-height: 1.5;
+}
+
+.subscription-widget-main-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.subscription-widget-main-price__compare {
+  color: #6b7280;
+}
+
+.subscription-widget-main-price__separator {
+  color: #6b7280;
+}
+
+.subscription-widget-main-price__current {
+  color: inherit;
+  font-weight: 700;
 }
 
 @media screen and (max-width: 749px) {

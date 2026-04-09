@@ -106,10 +106,13 @@ button {
 
 .plans-page-topbar h1 {
     margin: 0;
-    font-size: 24px;
+    padding: 0;
+    padding-top: 6px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.03em;
     color: #202223;
+
 }
 
 .plan-description-page {
@@ -133,7 +136,13 @@ button {
     font-weight: 700;
     text-decoration: none;
 }
-
+.plan-description-page__back h1 {
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
 .plan-description-page__layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 260px;
@@ -281,6 +290,11 @@ button {
     justify-content: space-between;
 }
 
+.plan-product-item--catalog {
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
 .plan-product-item__thumb {
     display: inline-flex;
     width: 32px;
@@ -315,6 +329,52 @@ button {
 
 .plan-product-list--search {
     margin-bottom: 14px;
+}
+
+.plan-variant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.plan-product-toggle {
+    display: inline-flex;
+    width: fit-content;
+    margin-top: 4px;
+    padding: 0;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.plan-variant-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    padding: 8px 10px;
+}
+
+.plan-variant-item__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.plan-variant-item__meta strong {
+    font-size: 12px;
+    font-weight: 600;
+    color: #202223;
+}
+
+.plan-variant-item__meta span {
+    font-size: 12px;
+    color: #6b7280;
 }
 
 .plan-option-panel {
@@ -466,8 +526,8 @@ button {
 .contract-detail-page {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    width: min(100%, 860px);
+    gap: 22px;
+    width: 100%;
     margin: 0 auto;
 }
 
@@ -475,39 +535,44 @@ button {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: 24px;
+    padding: 0 4px;
 }
 
 .contract-detail-page__heading-group {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 14px;
 }
 
 .contract-detail-page__back {
     color: #202223;
     text-decoration: none;
     font-size: 14px;
-    line-height: 1.2;
+    line-height: 1;
+    padding-top: 6px;
 }
 
 .contract-detail-page__heading-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
-.contract-detail-page__heading-row h1 {
+.contract-detail-page__heading-row h3 {
     margin: 0;
-    font-size: 32px;
+    padding: 0;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.03em;
+    line-height: 1.2;
 }
 
 .contract-detail-page__heading-group p {
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     color: #6b7280;
     font-size: 14px;
+    line-height: 1.45;
 }
 
 .contract-status-badge {
@@ -526,29 +591,13 @@ button {
 .contract-detail-page__actions {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.contract-detail-page__button {
-    min-height: 24px;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    background: #f3f4f6;
-    padding: 0 10px;
-    color: #202223;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.contract-detail-page__button--danger {
-    color: #b91c1c;
+    gap: 10px;
 }
 
 .contract-detail-page__layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 190px;
-    gap: 10px;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 0.98fr);
+    gap: 18px;
     align-items: start;
 }
 
@@ -556,15 +605,15 @@ button {
 .contract-detail-page__side {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 16px;
 }
 
 .contract-card {
     border: 1px solid #d9dadd;
-    border-radius: 10px;
+    border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    padding: 10px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    padding: 18px;
 }
 
 .contract-card__header {
@@ -572,45 +621,78 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
 }
 
 .contract-card__header h2,
 .contract-timeline h2 {
     margin: 0;
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 700;
+    line-height: 1.35;
 }
 
-.contract-card__edit,
+.contract-card__icon-button,
 .contract-card__more-link,
 .contract-upcoming-list__link {
     padding: 0;
-    color: #2563eb;
+    border: 0;
+    background: transparent;
+    color: #005bd3;
     font-size: 13px;
     cursor: pointer;
 }
 
+.contract-card__icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    margin-top: -1px;
+}
+
+.contract-icon {
+    width: 16px;
+    height: 16px;
+}
+
 .contract-product {
     display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) auto;
-    gap: 10px;
-    align-items: start;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
 }
 
 .contract-product__thumb {
-    width: 24px;
-    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 48px;
     border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #e4b640 0%, #b8860b 100%);
+    border-radius: 7px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0)),
+        linear-gradient(135deg, #d86278 0%, #253a66 100%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    object-fit: cover;
 }
 
-.contract-product__content a {
+.contract-product__thumb--image {
+    background: #ffffff;
+    box-shadow: none;
+}
+
+.contract-product__content a,
+.contract-product__title {
     color: #2563eb;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: none;
+    line-height: 1.4;
 }
 
 .contract-product__content p,
@@ -619,31 +701,33 @@ button {
 .contract-side-block p {
     margin: 2px 0 0;
     color: #6b7280;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 1.5;
 }
 
 .contract-product__pricing {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 18px;
     color: #374151;
     font-size: 14px;
+    white-space: nowrap;
+    padding-left: 6px;
 }
 
 .contract-product__pricing strong,
 .contract-summary-list__row strong,
 .contract-payment-method strong {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .contract-meta-list {
     display: grid;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 16px;
     border-top: 1px solid #e5e7eb;
-    padding-top: 10px;
+    padding-top: 14px;
 }
 
 .contract-meta-list__item,
@@ -655,6 +739,13 @@ button {
     gap: 12px;
 }
 
+.contract-meta-list__label,
+.contract-summary-list__label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .contract-meta-list__item span,
 .contract-summary-list__label span,
 .contract-upcoming-list__row span,
@@ -663,15 +754,20 @@ button {
     font-size: 13px;
 }
 
-.contract-summary-list {
-    display: grid;
-    gap: 8px;
+.contract-meta-list__item strong {
+    font-size: 14px;
+    font-weight: 500;
 }
 
-.contract-summary-list__label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.contract-summary-box {
+    border: 1px solid #d9dadd;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.contract-summary-list {
+    display: grid;
+    gap: 12px;
 }
 
 .contract-summary-list__label small {
@@ -681,12 +777,12 @@ button {
 
 .contract-upcoming-list {
     display: grid;
-    margin: 0 -10px;
+    margin: 0 -18px;
 }
 
 .contract-upcoming-list__row {
     border-top: 1px solid #e5e7eb;
-    padding: 8px 10px;
+    padding: 11px 18px;
 }
 
 .contract-upcoming-list__row:first-child {
@@ -694,23 +790,28 @@ button {
 }
 
 .contract-card__more-link {
-    margin-top: 8px;
+    margin-top: 12px;
+    color: #6d28d9;
+    text-decoration: underline;
 }
 
 .contract-side-block + .contract-side-block {
-    margin-top: 12px;
+    margin-top: 24px;
 }
 
 .contract-side-block h3 {
-    margin: 0 0 4px;
-    font-size: 15px;
+    margin: 0;
+    font-size: 16px;
     font-weight: 700;
+    line-height: 1.35;
 }
 
+.contract-side-block__customer-link,
 .contract-side-block a {
     color: #2563eb;
-    font-size: 13px;
+    font-size: 14px;
     text-decoration: none;
+    line-height: 1.45;
 }
 
 .contract-side-block__heading {
@@ -718,21 +819,21 @@ button {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 4px;
+    margin-bottom: 12px;
 }
 
 .contract-payment-method {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
 }
 
 .contract-payment-method__badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: 40px;
+    height: 26px;
     border-radius: 4px;
     background: #f59e0b;
     color: #ffffff;
@@ -742,11 +843,11 @@ button {
 }
 
 .contract-timeline {
-    padding: 10px 4px;
+    padding: 6px 6px 6px;
 }
 
 .contract-timeline__date {
-    margin-top: 26px;
+    margin-top: 18px;
     font-weight: 700;
 }
 
@@ -1308,7 +1409,8 @@ button {
 .plans-page__header h1,
 .contracts-page__header h1 {
     margin: 0;
-    font-size: 24px;
+    padding-top: 7px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: -0.03em;
     color: #202223;
@@ -1510,7 +1612,7 @@ button {
 .contracts-modal__link-button {
     width: fit-content;
     color: #005bd3;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     text-decoration: none;
     cursor: pointer;
@@ -1560,13 +1662,13 @@ button {
     gap: 12px;
     margin-bottom: 14px;
     color: #3f4246;
-    font-size: 16px;
+    font-size: 12px;
     line-height: 1.5;
 }
 
 .contracts-export-option input[type='radio'] {
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     margin: 0;
     accent-color: #202223;
 }
@@ -1593,6 +1695,36 @@ button {
 
 .contracts-table {
     border-top: 1px solid #e5e7eb;
+}
+
+.contracts-table__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid #e5e7eb;
+    padding: 16px;
+    background: #ffffff;
+}
+
+.contracts-table__pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.contracts-table__pagination-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #4b5563;
+    font-size: 14px;
+}
+
+.contracts-table__pagination-size s-select {
+    min-inline-size: 88px;
 }
 
 .contracts-table__selection-bar {
@@ -1735,11 +1867,22 @@ button {
 }
 
 .contracts-table__check input {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
     border-radius: 6px;
     accent-color: #111827;
     cursor: pointer;
+}
+
+@media (max-width: 900px) {
+    .contracts-table__pagination {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .contracts-table__pagination-controls {
+        justify-content: flex-start;
+    }
 }
 
 .contracts-status-pill {
@@ -2260,4 +2403,90 @@ button {
     /*height: 24px !important;*/
     line-height : 2 !important;
     inline-size : 1.98rem !important;
+}
+
+.overview-chart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.overview-chart-card {
+    border: 1px solid #d9dadd;
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at top right, rgba(0, 128, 96, 0.08), transparent 30%),
+        linear-gradient(180deg, #ffffff, #fafbfb);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    padding: 12px;
+}
+
+.overview-chart-card--wide {
+    min-width: 0;
+}
+
+.overview-chart-frame {
+    height: 220px;
+    min-height: 220px;
+}
+
+.overview-chart-frame--donut {
+    height: 240px;
+    min-height: 240px;
+}
+
+.overview-chart-frame > div {
+    height: 100%;
+}
+
+.overview-chart-frame :where(svg) {
+    max-height: 100%;
+}
+
+.overview-chart-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.overview-chart-card__header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.overview-chart-card__header p {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.overview-chart-card__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    border: 1px dashed #d9dadd;
+    border-radius: 14px;
+    color: #6b7280;
+    font-size: 14px;
+    text-align: center;
+    padding: 18px;
+}
+
+@media (max-width: 980px) {
+    .overview-chart-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .overview-chart-frame,
+    .overview-chart-frame--donut {
+        height: 200px;
+        min-height: 200px;
+    }
 }

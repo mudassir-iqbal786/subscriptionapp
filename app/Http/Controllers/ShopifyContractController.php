@@ -5,20 +5,29 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ImportSubscriptionContractsRequest;
 use App\Services\ShopifyContractService;
 use App\Services\SubscriptionContractImportService;
+use App\Support\SubscriptionContractStream;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ShopifyContractController extends Controller
 {
     public function index(Request $request, ShopifyContractService $shopifyContractService): JsonResponse
     {
+        $page = max(1, (int) $request->integer('page', 1));
+        $perPage = max(1, min(50, (int) $request->integer('perPage', 10)));
+        $status = Str::title(Str::lower((string) $request->string('status', 'All')));
+        $fetchLimit = $status === 'All'
+            ? ($page * $perPage) + 1
+            : max(250, (($page * $perPage) * 5) + 1);
+
         try {
             $contracts = $shopifyContractService->getContracts(
                 $request->user(),
-                (int) $request->integer('limit', 25)
+                $fetchLimit
             );
         } catch (RuntimeException $exception) {
             return response()->json([
@@ -26,13 +35,35 @@ class ShopifyContractController extends Controller
             ], 422);
         }
 
+        $allContracts = $request->user()
+            ->importedSubscriptionContracts
+            ->map(fn ($contract): array => $shopifyContractService->mapImportedContract($contract))
+            ->concat($contracts)
+            ->filter(function (array $contract) use ($status): bool {
+                if ($status === 'All') {
+                    return true;
+                }
+
+                return (string) data_get($contract, 'status', '') === $status;
+            })
+            ->values();
+
+        $offset = ($page - 1) * $perPage;
+        $paginatedContracts = $allContracts
+            ->slice($offset, $perPage)
+            ->values();
+
         return response()->json([
             'message' => 'Contracts fetched successfully.',
-            'contracts' => $request->user()
-                ->importedSubscriptionContracts
-                ->map(fn ($contract): array => $shopifyContractService->mapImportedContract($contract))
-                ->concat($contracts)
-                ->values(),
+            'contracts' => $paginatedContracts,
+            'pagination' => [
+                'page' => $page,
+                'perPage' => $perPage,
+                'hasPreviousPage' => $page > 1,
+                'hasNextPage' => $allContracts->count() > ($offset + $perPage),
+                'from' => $paginatedContracts->isEmpty() ? 0 : $offset + 1,
+                'to' => $offset + $paginatedContracts->count(),
+            ],
         ]);
     }
 
@@ -86,7 +117,7 @@ class ShopifyContractController extends Controller
                 $request->user(),
                 $contractId
             );
-//            dd($contract);
+            //            dd($contract);
         } catch (RuntimeException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
@@ -130,9 +161,11 @@ class ShopifyContractController extends Controller
         ]);
     }
 
-    public function pause(string $contractId, Request $request): JsonResponse
+    public function pause(string $contractId, Request $request, ShopifyContractService $shopifyContractService): JsonResponse
     {
-        if ($contractId === '') {
+        $normalizedContractId = $shopifyContractService->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
             return response()->json([
                 'message' => 'The selected subscription contract could not be paused.',
             ], 404);
@@ -155,7 +188,7 @@ mutation PauseSubscriptionContract($subscriptionContractId: ID!) {
 }
 GRAPHQL,
             [
-                'subscriptionContractId' => $contractId,
+                'subscriptionContractId' => $normalizedContractId,
             ]
         );
 
@@ -234,9 +267,11 @@ GRAPHQL,
         ]);
     }
 
-    public function resume(string $contractId, Request $request): JsonResponse
+    public function resume(string $contractId, Request $request, ShopifyContractService $shopifyContractService): JsonResponse
     {
-        if ($contractId === '') {
+        $normalizedContractId = $shopifyContractService->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
             return response()->json([
                 'message' => 'The selected subscription contract could not be resumed.',
             ], 404);
@@ -259,7 +294,7 @@ mutation ResumeSubscriptionContract($subscriptionContractId: ID!) {
 }
 GRAPHQL,
             [
-                'subscriptionContractId' => $contractId,
+                'subscriptionContractId' => $normalizedContractId,
             ]
         );
 
@@ -335,6 +370,53 @@ GRAPHQL,
         return response()->json([
             'message' => 'Subscription resumed successfully.',
             'contract' => data_get($resumePayload, 'contract'),
+        ]);
+    }
+
+    public function stream(Request $request, SubscriptionContractStream $subscriptionContractStream): StreamedResponse
+    {
+        $shopDomain = (string) ($request->user()?->getDomain()->toNative() ?? $request->query('shop', ''));
+        $knownEventId = trim((string) $request->header('Last-Event-ID', ''));
+
+        abort_if($shopDomain === '', 403, 'The current shop could not be resolved for the subscription stream.');
+
+        if ($knownEventId === '') {
+            $knownEventId = (string) data_get($subscriptionContractStream->latest($shopDomain), 'id', '');
+        }
+
+        return response()->stream(function () use ($knownEventId, $shopDomain, $subscriptionContractStream): void {
+            $lastEventId = $knownEventId;
+            $expiresAt = time() + 25;
+
+            while (time() < $expiresAt) {
+                if (connection_aborted()) {
+                    break;
+                }
+
+                $event = $subscriptionContractStream->latest($shopDomain);
+
+                if (is_array($event) && ($event['id'] ?? '') !== '' && $event['id'] !== $lastEventId) {
+                    echo 'id: '.$event['id']."\n";
+                    echo "event: subscription-contract-updated\n";
+                    echo 'data: '.json_encode($event)."\n\n";
+
+                    $lastEventId = $event['id'];
+                } else {
+                    echo ": heartbeat\n\n";
+                }
+
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+
+                flush();
+                sleep(1);
+            }
+        }, 200, [
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Connection' => 'keep-alive',
+            'Content-Type' => 'text/event-stream',
+            'X-Accel-Buffering' => 'no',
         ]);
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\SubscriptionContractCreateJob;
+use App\Jobs\SubscriptionContractUpdateJob;
 use Gnikyt\BasicShopifyAPI\Deferrers\Sleep;
 use Gnikyt\BasicShopifyAPI\Store\Memory;
 use Osiset\ShopifyApp\Messaging\Events\AppInstalledEvent;
@@ -398,6 +400,16 @@ return [
         'app-uninstalled' => [
             'topic' => env('SHOPIFY_WEBHOOK_APP_UNINSTALLED_TOPIC', 'APP_UNINSTALLED'),
             'address' => env('SHOPIFY_WEBHOOK_APP_UNINSTALLED_ADDRESS', env('APP_URL').'/webhook/app-uninstalled'),
+        ],
+        'subscription-contract-create' => [
+            'topic' => env('SHOPIFY_WEBHOOK_SUBSCRIPTION_CONTRACT_CREATE_TOPIC', 'SUBSCRIPTION_CONTRACTS_CREATE'),
+            'address' => env('SHOPIFY_WEBHOOK_SUBSCRIPTION_CONTRACT_CREATE_ADDRESS', env('APP_URL').'/webhook/subscription-contract-create'),
+            'class' => SubscriptionContractCreateJob::class,
+        ],
+        'subscription-contract-update' => [
+            'topic' => env('SHOPIFY_WEBHOOK_SUBSCRIPTION_CONTRACT_UPDATE_TOPIC', 'SUBSCRIPTION_CONTRACTS_UPDATE'),
+            'address' => env('SHOPIFY_WEBHOOK_SUBSCRIPTION_CONTRACT_UPDATE_ADDRESS', env('APP_URL').'/webhook/subscription-contract-update'),
+            'class' => SubscriptionContractUpdateJob::class,
         ],
     ],
 

@@ -5,8 +5,27 @@ import { AppAnchor, useAppNavigate } from '../navigation.jsx';
 import { deletePlan, fetchPlanDetail, planDetailQueryKey, plansQueryKey, updatePlan } from '../planQueries.js';
 
 const storefrontNote = 'Customers will see this on';
-const getProductsUrl = '/api/get-products';
-const searchProductsUrl = '/api/search-products';
+const defaultProductSwatch = 'linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%)';
+
+function getSelectionSummary(products, productVariants) {
+    const productCount = products.length;
+    const variantCount = productVariants.length;
+    const parts = [];
+
+    if (productCount > 0) {
+        parts.push(productCount === 1 ? '1 product' : `${productCount} products`);
+    }
+
+    if (variantCount > 0) {
+        parts.push(variantCount === 1 ? '1 variant' : `${variantCount} variants`);
+    }
+
+    return parts.length > 0 ? parts.join(', ') : 'No products or variants selected';
+}
+
+function getVariantLabel(variant) {
+    return variant.title === 'Default Title' ? `${variant.productTitle} default variant` : variant.title;
+}
 
 function getProductThumbStyle(product) {
     if (product.imageUrl) {
@@ -81,16 +100,16 @@ export default function PlanDescriptionPage() {
     const [title, setTitle] = useState('');
     const [internalDescription, setInternalDescription] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [catalogProducts, setCatalogProducts] = useState([]);
-    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-    const [isSearching, setIsSearching] = useState(false);
-    const [searchError, setSearchError] = useState('');
+    const [pickerError, setPickerError] = useState('');
+    const [isOpeningPicker, setIsOpeningPicker] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
+    const [selectedProductVariants, setSelectedProductVariants] = useState([]);
     const [options, setOptions] = useState([]);
     const [discountType, setDiscountType] = useState('No discount');
     const [saveSuccess, setSaveSuccess] = useState('');
     const [actionError, setActionError] = useState('');
     const [isFormHydrated, setIsFormHydrated] = useState(false);
+    const [lastAutoOpenedQuery, setLastAutoOpenedQuery] = useState('');
 
     useEffect(() => {
         setIsFormHydrated(false);
@@ -102,77 +121,34 @@ export default function PlanDescriptionPage() {
         setTitle(getInitialTitle(plan));
         setInternalDescription(getInitialInternalDescription(plan));
         setSelectedProducts(Array.isArray(plan.products) ? plan.products : []);
+        setSelectedProductVariants(Array.isArray(plan.productVariants) ? plan.productVariants : []);
         setOptions(buildInitialOptions(plan));
         setDiscountType(getInitialDiscountType(plan));
         setIsFormHydrated(true);
     }, [plan]);
 
     useEffect(() => {
-        let isMounted = true;
+        const normalizedQuery = searchTerm.trim();
 
-        async function loadProducts() {
-            try {
-                const response = await window.axios.get(getProductsUrl, {
-                    params: {
-                        limit: 12,
-                    },
-                });
+        if (normalizedQuery === '') {
+            setLastAutoOpenedQuery('');
 
-                if (!isMounted) {
-                    return;
-                }
-
-                setCatalogProducts(response.data.products ?? []);
-                setSearchError('');
-            } catch (loadError) {
-                if (!isMounted) {
-                    return;
-                }
-
-                setSearchError('Unable to load Shopify products right now.');
-            } finally {
-                if (isMounted) {
-                    setIsLoadingProducts(false);
-                }
-            }
+            return;
         }
 
-        loadProducts();
+        if (isOpeningPicker || lastAutoOpenedQuery === normalizedQuery) {
+            return;
+        }
 
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
-    useEffect(() => {
-        const timeoutId = window.setTimeout(async () => {
-            setIsSearching(true);
-            setSearchError('');
-
-            try {
-                const response = await window.axios.get(searchTerm.trim() === '' ? getProductsUrl : searchProductsUrl, {
-                    params: searchTerm.trim() === ''
-                        ? {
-                              limit: 12,
-                          }
-                        : {
-                              query: searchTerm,
-                              limit: 12,
-                          },
-                });
-
-                setCatalogProducts(response.data.products ?? []);
-            } catch (loadError) {
-                setSearchError('Unable to load Shopify products right now.');
-            } finally {
-                setIsSearching(false);
-            }
-        }, searchTerm.trim() === '' ? 0 : 300);
+        const timeoutId = window.setTimeout(() => {
+            setLastAutoOpenedQuery(normalizedQuery);
+            void openProductPicker(normalizedQuery);
+        }, 500);
 
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [searchTerm]);
+    }, [isOpeningPicker, lastAutoOpenedQuery, searchTerm]);
 
     const updatePlanMutation = useMutation({
         mutationFn: updatePlan,
@@ -199,14 +175,10 @@ export default function PlanDescriptionPage() {
         },
     });
 
-    const availableProducts = catalogProducts.filter((product) => {
-        return selectedProducts.every((selectedProduct) => selectedProduct.id !== product.id);
-    });
-
     const deliveryOption = options[0];
     const summaryDescription = [
         deliveryOption ? `Deliver every ${deliveryOption.frequencyValue} ${deliveryOption.frequencyUnit.toLowerCase()}` : 'No delivery frequency selected',
-        selectedProducts.length === 1 ? '1 product' : `${selectedProducts.length} products`,
+        getSelectionSummary(selectedProducts, selectedProductVariants),
         discountType === 'No discount'
             ? 'No discount'
             : `${deliveryOption?.percentageOff || 0}${discountType === 'Fixed amount off' ? '$' : '%'} off`,
@@ -249,19 +221,139 @@ export default function PlanDescriptionPage() {
         });
     }
 
-    function addProduct(product) {
-        setSelectedProducts((currentProducts) => {
-            if (currentProducts.some((currentProduct) => currentProduct.id === product.id)) {
-                return currentProducts;
-            }
-
-            return [...currentProducts, product];
-        });
-        setSearchTerm('');
-    }
-
     function removeProduct(productId) {
         setSelectedProducts((currentProducts) => currentProducts.filter((product) => product.id !== productId));
+    }
+
+    function removeProductVariant(variantId) {
+        setSelectedProductVariants((currentVariants) => currentVariants.filter((variant) => variant.id !== variantId));
+    }
+
+    function getResourcePickerSelectionIds() {
+        const selectionsByProductId = new Map();
+
+        selectedProducts.forEach((product) => {
+            if (!product?.id) {
+                return;
+            }
+
+            selectionsByProductId.set(product.id, {
+                id: product.id,
+            });
+        });
+
+        selectedProductVariants.forEach((variant) => {
+            if (!variant?.productId || !variant?.id) {
+                return;
+            }
+
+            const existingSelection = selectionsByProductId.get(variant.productId);
+
+            if (existingSelection && !Array.isArray(existingSelection.variants)) {
+                return;
+            }
+
+            const variantSelection = existingSelection ?? {
+                id: variant.productId,
+                variants: [],
+            };
+
+            variantSelection.variants.push({
+                id: variant.id,
+            });
+
+            selectionsByProductId.set(variant.productId, variantSelection);
+        });
+
+        console.log("values" ,selectionsByProductId.values());
+        return Array.from(selectionsByProductId.values());
+    }
+
+    function normalizeSelectedProduct(product) {
+        const imageUrl = product.images?.[0]?.originalSrc ?? product.images?.[0]?.url ?? null;
+        const variants = Array.isArray(product.variants) ? product.variants : [];
+
+        return {
+            id: product.id,
+            title: product.title,
+            variants: variants.length === 1 ? '1 variant available' : `${variants.length} variants available`,
+            imageUrl,
+            swatch: defaultProductSwatch,
+        };
+    }
+
+    function syncResourcePickerSelection(selection) {
+        const nextProducts = [];
+        const nextVariants = [];
+
+        selection.forEach((product) => {
+            const normalizedProduct = normalizeSelectedProduct(product);
+            const variants = Array.isArray(product.variants) ? product.variants : [];
+            const hasVariantSelection = variants.length > 0 && variants.length < (product.totalVariants ?? variants.length);
+
+            if (!hasVariantSelection) {
+                nextProducts.push(normalizedProduct);
+
+                return;
+            }
+
+            variants.forEach((variant) => {
+                nextVariants.push({
+                    id: variant.id,
+                    title: variant.title,
+                    productId: product.id,
+                    productTitle: product.title,
+                    imageUrl: variant.image?.originalSrc ?? variant.image?.url ?? normalizedProduct.imageUrl,
+                    swatch: normalizedProduct.swatch,
+                });
+            });
+        });
+
+        setSelectedProducts(nextProducts);
+        setSelectedProductVariants(nextVariants);
+        setPickerError('');
+    }
+
+    async function openProductPicker(query = '') {
+        if (typeof window.shopify?.resourcePicker !== 'function') {
+            setPickerError('Shopify product picker is not available right now.');
+
+            return;
+        }
+
+        setIsOpeningPicker(true);
+        setPickerError('');
+
+        try {
+            const selection = await window.shopify.resourcePicker({
+                type: 'product',
+                multiple: true,
+                filter: {
+                    variants: true,
+                    query: query.trim() === '' ? undefined : query.trim(),
+                },
+                selectionIds: getResourcePickerSelectionIds(),
+            });
+
+            if (!Array.isArray(selection) || selection.length === 0) {
+                return;
+            }
+
+            syncResourcePickerSelection(selection);
+        } catch (loadError) {
+            setPickerError('Unable to open the Shopify product picker right now.');
+        } finally {
+            setIsOpeningPicker(false);
+        }
+    }
+
+    function handleSearchKeyDown(event) {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        void openProductPicker(searchTerm);
     }
 
 
@@ -284,6 +376,12 @@ export default function PlanDescriptionPage() {
             products: selectedProducts.map((product) => ({
                 id: product.id,
                 title: product.title,
+            })),
+            productVariants: selectedProductVariants.map((variant) => ({
+                id: variant.id,
+                title: variant.title,
+                productId: variant.productId,
+                productTitle: variant.productTitle,
             })),
             options: options.map((option) => ({
                 id: option.id,
@@ -337,8 +435,8 @@ export default function PlanDescriptionPage() {
         <div className="plan-description-page">
             <div className="plan-description-page__header">
                 <AppAnchor className="plan-description-page__back" to="/plans">
-                    <span aria-hidden="true">&larr;</span>
-                    <span>{plan.name}</span>
+                    <span aria-hidden="true"><s-icon type="arrow-left"> </s-icon></span>
+                    <h1>{plan.name}</h1>
                 </AppAnchor>
             </div>
 
@@ -374,45 +472,25 @@ export default function PlanDescriptionPage() {
                                 <span aria-hidden="true">Search</span>
                                 <input
                                     onChange={(event) => setSearchTerm(event.target.value)}
+                                    onKeyDown={handleSearchKeyDown}
                                     placeholder="Search products"
                                     type="text"
                                     value={searchTerm}
                                 />
                             </label>
 
-                            <button className="plan-secondary-button" onClick={() => setSearchTerm('')} type="button">
+                            <button className="plan-secondary-button" onClick={() => void openProductPicker()} type="button">
                                 Browse
                             </button>
                         </div>
 
-                        {searchError ? <p className="plan-field__hint">{searchError}</p> : null}
-                        {isLoadingProducts ? <p className="plan-field__hint">Loading Shopify products...</p> : null}
-                        {isSearching ? <p className="plan-field__hint">Searching Shopify products...</p> : null}
+                        {pickerError ? <p className="plan-field__hint">{pickerError}</p> : null}
 
-                        {!isLoadingProducts && availableProducts.length > 0 ? (
-                            <div className="plan-product-list plan-product-list--search">
-                                {availableProducts.map((product) => (
-                                    <article className="plan-product-item plan-product-item--action" key={product.id}>
-                                        <span className="plan-product-item__thumb" style={getProductThumbStyle(product)} />
+                        <p className="plan-field__hint">
+                            Start typing to open Shopify&apos;s product picker automatically, or use Browse to open the full product list. From there you can select full products or specific variants for this plan.
+                        </p>
 
-                                        <div className="plan-product-item__content">
-                                            <h3>{product.title}</h3>
-                                            <span>{product.variants}</span>
-                                        </div>
-
-                                        <button className="plan-secondary-button" onClick={() => addProduct(product)} type="button">
-                                            Add
-                                        </button>
-                                    </article>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="plan-field__hint">
-                                {searchTerm.trim() !== '' ? 'No Shopify products match your search.' : 'All available Shopify products are already linked to this plan.'}
-                            </p>
-                        )}
-
-                        {selectedProducts.length > 0 ? (
+                        {selectedProducts.length > 0 || selectedProductVariants.length > 0 ? (
                             <div className="plan-product-list">
                                 {selectedProducts.map((product) => (
                                     <article className="plan-product-item plan-product-item--action" key={product.id}>
@@ -428,9 +506,23 @@ export default function PlanDescriptionPage() {
                                         </button>
                                     </article>
                                 ))}
+                                {selectedProductVariants.map((variant) => (
+                                    <article className="plan-product-item plan-product-item--action" key={variant.id}>
+                                        <span className="plan-product-item__thumb" style={getProductThumbStyle(variant)} />
+
+                                        <div className="plan-product-item__content">
+                                            <h3>{getVariantLabel(variant)}</h3>
+                                            <span>{variant.productTitle}</span>
+                                        </div>
+
+                                        <button className="plan-danger-button" onClick={() => removeProductVariant(variant.id)} type="button">
+                                            Remove
+                                        </button>
+                                    </article>
+                                ))}
                             </div>
                         ) : (
-                            <p className="plan-field__hint">Search for a product above, then add it to this plan.</p>
+                            <p className="plan-field__hint">No products selected yet. Use Search or Browse to open Shopify&apos;s product picker.</p>
                         )}
                     </section>
 

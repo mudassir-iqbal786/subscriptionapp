@@ -23,6 +23,15 @@ query SearchProducts($first: Int!, $query: String) {
       featuredImage {
         url
       }
+      variants(first: 25) {
+        nodes {
+          id
+          title
+          image {
+            url
+          }
+        }
+      }
     }
   }
 }
@@ -44,6 +53,20 @@ GRAPHQL,
                     'variants' => $variantCount === 1 ? '1 variant available' : "{$variantCount} variants available",
                     'imageUrl' => data_get($product, 'featuredImage.url'),
                     'swatch' => $this->makeSwatch((string) data_get($product, 'id')),
+                    'variantOptions' => collect(data_get($product, 'variants.nodes', []))
+                        ->map(function (array $variant) use ($product): array {
+                            return [
+                                'id' => (string) data_get($variant, 'id'),
+                                'title' => (string) data_get($variant, 'title'),
+                                'productId' => (string) data_get($product, 'id'),
+                                'productTitle' => (string) data_get($product, 'title'),
+                                'imageUrl' => data_get($variant, 'image.url', data_get($product, 'featuredImage.url')),
+                                'swatch' => $this->makeSwatch((string) data_get($variant, 'id', data_get($product, 'id'))),
+                            ];
+                        })
+                        ->filter(fn (array $variant): bool => filled($variant['id']) && filled($variant['productId']))
+                        ->values()
+                        ->all(),
                 ];
             })
             ->filter(fn (array $product): bool => filled($product['id']) && filled($product['title']))
@@ -64,8 +87,8 @@ GRAPHQL,
 
         //        dd($payload,$input);
         $resources = [
-            'productIds' => collect($payload['products'])->pluck('id')->values()->all(),
-            'productVariantIds' => [],
+            'productIds' => collect($payload['products'] ?? [])->pluck('id')->values()->all(),
+            'productVariantIds' => collect($payload['productVariants'] ?? [])->pluck('id')->values()->all(),
         ];
 
         $response = $shop->api()->graph(
@@ -156,7 +179,7 @@ GRAPHQL,
                 $optionLabel = $this->optionLabel($intervalCount, $option['frequencyUnit']);
 
                 $sellingPlan = [
-                    'name' => $payload['title'],
+                    'name' => $this->sellingPlanName($payload['title'], $optionLabel),
                     'options' => [$optionLabel],
                     'position' => $index + 1,
                     'category' => 'SUBSCRIPTION',
@@ -308,5 +331,16 @@ GRAPHQL,
         $labelUnit = $frequencyValue === 1 ? $singularUnit : Str::plural($singularUnit);
 
         return "Every {$frequencyValue} {$labelUnit}";
+    }
+
+    private function sellingPlanName(string $title, string $optionLabel): string
+    {
+        $normalizedTitle = trim($title);
+
+        if ($normalizedTitle === '') {
+            return $optionLabel;
+        }
+
+        return "{$normalizedTitle} - {$optionLabel}";
     }
 }

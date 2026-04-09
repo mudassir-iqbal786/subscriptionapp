@@ -1,15 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { useAppNavigate } from '../navigation.jsx';
 import { fetchPlans, plansQueryKey } from '../planQueries.js';
 
 export default function PlansPage() {
     const navigateTo = useAppNavigate();
+    const [sortBy, setSortBy] = useState('create');
+    const [sortDirection, setSortDirection] = useState('desc');
     const { data: plans = [], error, isLoading } = useQuery({
         queryKey: plansQueryKey,
         queryFn: fetchPlans,
     });
 
     const searchError = error ? 'Unable to load Shopify plans right now.' : '';
+    const sortedPlans = useMemo(() => {
+        return [...plans].sort((leftPlan, rightPlan) => {
+            const leftValue = Date.parse(
+                sortBy === 'update'
+                    ? leftPlan.updatedAt ?? leftPlan.createdAt ?? ''
+                    : leftPlan.createdAt ?? leftPlan.updatedAt ?? ''
+            );
+            const rightValue = Date.parse(
+                sortBy === 'update'
+                    ? rightPlan.updatedAt ?? rightPlan.createdAt ?? ''
+                    : rightPlan.createdAt ?? rightPlan.updatedAt ?? ''
+            );
+            const normalizedLeftValue = Number.isNaN(leftValue) ? 0 : leftValue;
+            const normalizedRightValue = Number.isNaN(rightValue) ? 0 : rightValue;
+
+            if (sortDirection === 'asc') {
+                return normalizedLeftValue - normalizedRightValue;
+            }
+
+            return normalizedRightValue - normalizedLeftValue;
+        });
+    }, [plans, sortBy, sortDirection]);
 
     function formatPricing(plan) {
         const firstPlan = plan.plans?.[0];
@@ -42,9 +67,9 @@ export default function PlansPage() {
             <div className="plans-page-topbar">
                 <h1>Subscription plans</h1>
 
-                <button className="dark-button dark-button--compact" onClick={() => navigateTo('/plans/create')} type="button">
+                <s-button className=""  variant="primary" onClick={() => navigateTo('/plans/create')} type="button">
                     Create plan
-                </button>
+                </s-button>
             </div>
 
             <s-section padding="none">
@@ -54,9 +79,38 @@ export default function PlansPage() {
                             <s-button variant="secondary">All</s-button>
                         </div>
 
-                        <s-button accessibilityLabel="Sort plans" variant="secondary">
-                            Sort
-                        </s-button>
+                        {/*<s-button accessibilityLabel="Sort plans" variant="secondary">*/}
+                        {/*    Sort*/}
+                        {/*</s-button>*/}
+
+                        <s-button commandFor="organized-menu">Sort</s-button>
+
+                        <s-menu id="organized-menu" accessibilityLabel="Organized menu">
+                            <s-section heading="Sort By">
+                                <s-button
+                                    icon={sortBy === 'create' ? 'checkmark' : undefined}
+                                    variant={sortBy === 'create' ? 'primary' : 'tertiary'}
+                                    onClick={() => setSortBy('create')}
+                                >
+                                    Created
+                                </s-button>
+                                <s-button
+                                    icon={sortBy === 'update' ? 'checkmark' : undefined}
+                                    variant={sortBy === 'update' ? 'primary' : 'tertiary'}
+                                    onClick={() => setSortBy('update')}
+                                >
+                                    Updated
+                                </s-button>
+                            </s-section>
+                            <s-section>
+                                <s-button icon="arrow-up" variant={sortDirection === 'asc' ? 'primary' : 'secondary'} onClick={() => setSortDirection('asc')}>
+                                    Oldest First
+                                </s-button>
+                                <s-button icon="arrow-down" variant={sortDirection === 'desc' ? 'primary' : 'secondary'} onClick={() => setSortDirection('desc')}>
+                                    Newest First
+                                </s-button>
+                            </s-section>
+                        </s-menu>
                     </div>
 
                     <s-table-header-row>
@@ -81,7 +135,7 @@ export default function PlansPage() {
                             </s-table-row>
                         ) : null}
 
-                        {plans.map((plan) => (
+                        {sortedPlans.map((plan) => (
                             <s-table-row
                                 className="plans-table-row"
                                 key={plan.id}

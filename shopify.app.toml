@@ -1,6 +1,6 @@
 client_id = "77a89f3a02cf5606e64eccd1156bc281"
 name = "mudasser-subscription-app"
-application_url = "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app"
+application_url = "https://6943-2407-d000-704-d051-c828-b95-326b-8f2e.ngrok-free.app"
 embedded = true
 handle = "mudasser-subscription-app"
 extension_directories = ["extensions/*"]
@@ -16,8 +16,8 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app/authenticate",
-  "https://26f1-2407-d000-704-bb27-d5d4-2ce4-9534-6727.ngrok-free.app/authenticate/token"
+  "https://6943-2407-d000-704-d051-c828-b95-326b-8f2e.ngrok-free.app/authenticate",
+  "https://6943-2407-d000-704-d051-c828-b95-326b-8f2e.ngrok-free.app/authenticate/token"
 ]
 
 [webhooks]
