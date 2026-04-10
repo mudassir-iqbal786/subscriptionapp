@@ -1,0 +1,10 @@
+{
+  "heading": "Profils d'expedition",
+  "title": "Details des profils d'expedition",
+  "body": "Consultez le profil d'expedition attribue a chaque article de cette commande.",
+  "loading": "Chargement des profils d'expedition...",
+  "profileLine": "{{item}} : {{profile}}",
+  "profileFallback": "Profil d'expedition par defaut",
+  "itemFallback": "Article de la commande",
+  "error": "Impossible de charger les profils d'expedition pour le moment."
+}

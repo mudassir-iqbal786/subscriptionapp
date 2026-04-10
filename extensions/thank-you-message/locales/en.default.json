@@ -1,7 +1,12 @@
 {
   "heading": "Subscription confirmed",
   "title": "Thank you for subscribing",
-  "body": "Your subscription order {{orderNumber}} is all set. We’ve successfully saved {{count}} subscription item(s), and future renewals will follow the delivery schedule you selected.",
+  "body": "Your subscription order {{orderNumber}} is all set. We've successfully saved {{count}} subscription item(s), and future renewals will follow the delivery schedule you selected.",
   "plan": "Selected plan: {{plan}}",
-  "footer": "We’ll take care of the recurring delivery so you can simply look forward to the next shipment."
+  "shippingProfilesHeading": "Shipping profiles",
+  "shippingProfilesLoading": "Loading shipping profiles...",
+  "shippingProfileLine": "{{item}}: {{profile}}",
+  "shippingProfileFallback": "Default shipping profile",
+  "subscriptionItemFallback": "Subscription item",
+  "footer": "We'll take care of the recurring delivery so you can simply look forward to the next shipment."
 }

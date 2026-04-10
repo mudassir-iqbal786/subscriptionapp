@@ -1,7 +1,12 @@
 {
   "heading": "Abonnement confirme",
   "title": "Merci pour votre abonnement",
-  "body": "Votre commande d’abonnement {{orderNumber}} est confirmee. Nous avons bien enregistre {{count}} article(s) d’abonnement, et les prochains renouvellements suivront la frequence de livraison choisie.",
+  "body": "Votre commande d'abonnement {{orderNumber}} est confirmee. Nous avons bien enregistre {{count}} article(s) d'abonnement, et les prochains renouvellements suivront la frequence de livraison choisie.",
   "plan": "Formule selectionnee : {{plan}}",
+  "shippingProfilesHeading": "Profils d'expedition",
+  "shippingProfilesLoading": "Chargement des profils d'expedition...",
+  "shippingProfileLine": "{{item}} : {{profile}}",
+  "shippingProfileFallback": "Profil d'expedition par defaut",
+  "subscriptionItemFallback": "Article d'abonnement",
   "footer": "Nous nous occupons des livraisons recurrentes pour que vous puissiez simplement attendre la prochaine expedition."
 }

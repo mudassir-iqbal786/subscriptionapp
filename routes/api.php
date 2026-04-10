@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CheckoutExtensionController;
 use App\Http\Controllers\ShopifyContractController;
 use App\Http\Controllers\ShopifyProductSearchController;
 use App\Http\Controllers\SubscriptionPlanPageController;
@@ -15,6 +16,7 @@ Route::get('/', function () {
 Route::middleware(['verify.shopify'])->group(function (): void {
     Route::get('/get-products', [ShopifyProductSearchController::class, 'index']);
     Route::get('/search-products', [ShopifyProductSearchController::class, 'search']);
+    Route::post('/checkout/shipping-profiles', [CheckoutExtensionController::class, 'shippingProfiles']);
     Route::get('/contracts', [ShopifyContractController::class, 'index']);
     Route::post('/contracts/import', [ShopifyContractController::class, 'import']);
     Route::get('/contracts/{contractId}', [ShopifyContractController::class, 'show'])->where('contractId', '.*');

@@ -1,0 +1,10 @@
+{
+  "heading": "Shipping profiles",
+  "title": "Shipping profile details",
+  "body": "Review the shipping profile assigned to each line item in this checkout.",
+  "loading": "Loading shipping profiles...",
+  "profileLine": "{{item}}: {{profile}}",
+  "profileFallback": "Default shipping profile",
+  "itemFallback": "Checkout item",
+  "error": "Unable to load shipping profiles right now."
+}
