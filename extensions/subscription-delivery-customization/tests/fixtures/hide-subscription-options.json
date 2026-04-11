@@ -1,0 +1,59 @@
+{
+  "payload": {
+    "export": "cart-delivery-options-transform-run",
+    "target": "cart.delivery-options.transform.run",
+    "input": {
+      "deliveryCustomization": {
+        "metafield": {
+          "jsonValue": {
+            "hiddenDeliveryOptionTitles": ["Express"],
+            "hiddenDeliveryOptionHandles": ["overnight"]
+          }
+        }
+      },
+      "cart": {
+        "lines": [
+          {
+            "sellingPlanAllocation": {
+              "sellingPlan": {
+                "id": "gid://shopify/SellingPlan/1"
+              }
+            }
+          }
+        ],
+        "deliveryGroups": [
+          {
+            "deliveryOptions": [
+              {
+                "handle": "standard",
+                "title": "Standard"
+              },
+              {
+                "handle": "express",
+                "title": "Express"
+              },
+              {
+                "handle": "overnight",
+                "title": "Priority Overnight"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "output": {
+      "operations": [
+        {
+          "deliveryOptionHide": {
+            "deliveryOptionHandle": "express"
+          }
+        },
+        {
+          "deliveryOptionHide": {
+            "deliveryOptionHandle": "overnight"
+          }
+        }
+      ]
+    }
+  }
+}

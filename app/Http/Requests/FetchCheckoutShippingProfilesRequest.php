@@ -18,6 +18,7 @@ class FetchCheckoutShippingProfilesRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'checkoutId' => ['nullable', 'string', 'max:255'],
             'variantIds' => ['required', 'array', 'min:1', 'max:50'],
             'variantIds.*' => ['required', 'string', 'regex:/^gid:\/\/shopify\/ProductVariant\/\d+$/'],
         ];

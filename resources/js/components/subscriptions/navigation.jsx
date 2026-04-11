@@ -28,6 +28,11 @@ export const pageContent = {
     settings: {
         title: 'Settings',
     },
+    deliveryCustomization: {
+        title: 'Delivery customization',
+        parentTitle: 'Settings',
+        parentHref: '/settings',
+    },
 };
 
 const embeddedQueryKeys = ['embedded', 'host', 'locale', 'shop'];
@@ -76,6 +81,10 @@ export function getCurrentPage(pathname) {
 
     if (normalizedPath === '/settings') {
         return 'settings';
+    }
+
+    if (normalizedPath.startsWith('/delivery-customization')) {
+        return 'deliveryCustomization';
     }
 
     return 'home';

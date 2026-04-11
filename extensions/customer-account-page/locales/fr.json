@@ -1,4 +1,5 @@
 {
   "heading": "Abonnements",
-  "body": "Gerez vos abonnements depuis la page des commandes client."
+  "body": "Consultez, mettez en pause, reprenez ou annulez vos abonnements actifs depuis votre compte.",
+  "manageAction": "Gerer les abonnements"
 }

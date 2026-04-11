@@ -3,6 +3,7 @@
   "title": "Details des profils d'expedition",
   "body": "Consultez le profil d'expedition attribue a chaque article de cette commande.",
   "loading": "Chargement des profils d'expedition...",
+  "itemsTitle": "Articles de la commande",
   "profileLine": "{{item}} : {{profile}}",
   "profileFallback": "Profil d'expedition par defaut",
   "itemFallback": "Article de la commande",

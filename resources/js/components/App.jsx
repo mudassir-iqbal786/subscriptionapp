@@ -3,6 +3,7 @@ import { TitleBar } from '@shopify/app-bridge-react';
 import ContractsPage from './subscriptions/pages/ContractsPage.jsx';
 import ContractDetailPage from './subscriptions/pages/ContractDetailPage.jsx';
 import CreatePlanPage from './subscriptions/pages/CreatePlanPage.jsx';
+import DeliveryCustomizationPage from './subscriptions/pages/DeliveryCustomizationPage.jsx';
 import OverviewPage from './subscriptions/pages/OverviewPage.jsx';
 import PlanDescriptionPage from './subscriptions/pages/PlanDescriptionPage.jsx';
 import PlansPage from './subscriptions/pages/PlansPage.jsx';
@@ -39,6 +40,7 @@ export default function App() {
                     <Route element={<PlanDescriptionPage />} path="/plans/description/:planId" />
                     <Route element={<ContractsPage />} path="/contracts" />
                     <Route element={<ContractDetailPage />} path="/contracts/detail/:contractId" />
+                    <Route element={<DeliveryCustomizationPage />} path="/delivery-customization/*" />
                     <Route element={<SettingsPage />} path="/settings" />
                     <Route element={<Navigate replace to={buildAppPath('/', location.search)} />} path="*" />
                 </Routes>

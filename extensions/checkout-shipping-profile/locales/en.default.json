@@ -3,6 +3,7 @@
   "title": "Shipping profile details",
   "body": "Review the shipping profile assigned to each line item in this checkout.",
   "loading": "Loading shipping profiles...",
+  "itemsTitle": "Checkout items",
   "profileLine": "{{item}}: {{profile}}",
   "profileFallback": "Default shipping profile",
   "itemFallback": "Checkout item",

@@ -1,4 +1,5 @@
 {
   "heading": "Subscriptions",
-  "body": "Manage your subscriptions from the customer orders page."
+  "body": "View, pause, resume, or cancel your active subscriptions from your account.",
+  "manageAction": "Manage subscriptions"
 }

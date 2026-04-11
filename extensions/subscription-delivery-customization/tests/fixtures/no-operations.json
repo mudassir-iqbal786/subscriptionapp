@@ -1,0 +1,31 @@
+{
+  "payload": {
+    "export": "cart-delivery-options-transform-run",
+      "target": "cart.delivery-options.transform.run",
+      "input": {
+        "deliveryCustomization": {
+          "metafield": null
+        },
+        "cart": {
+          "lines": [
+            {
+              "sellingPlanAllocation": null
+            }
+          ],
+          "deliveryGroups": [
+            {
+              "deliveryOptions": [
+                {
+                  "handle": "standard",
+                  "title": "Standard"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "output": {
+        "operations": []
+      }
+  }
+}

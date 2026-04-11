@@ -1,22 +1,23 @@
+/** @jsxImportSource preact */
 import '@shopify/ui-extensions/preact';
-import {render} from "preact";
+import {render} from 'preact';
 
 export default async () => {
   render(<Extension />, document.body);
 };
 
 function Extension() {
-    const lines = shopify.lines.value || [];
-
-    // console.log("lines ",lines)
-    // const subscriptionLines = lines.filter((line) => line?.merchandise?.sellingPlan);
-    // const appUrl = globalThis.process?.env?.APP_URL || "https://6943-2407-d000-704-d051-c828-b95-326b-8f2e.ngrok-free.app";
-
   return (
-    <s-banner heading={shopify.i18n.translate("heading")}>
-      <s-block-stack gap="base">
-        <s-text>{shopify.i18n.translate("body")}</s-text>
-      </s-block-stack>
-    </s-banner>
+    <s-section>
+      <s-stack direction="inline" justifyContent="space-between" alignItems="center">
+        <s-stack direction="block" gap="small-400">
+          <s-heading>{shopify.i18n.translate('heading')}</s-heading>
+          <s-text>{shopify.i18n.translate('body')}</s-text>
+        </s-stack>
+        <s-button variant="primary" href="extension:customer-subscriptions-page/">
+          {shopify.i18n.translate('manageAction')}
+        </s-button>
+      </s-stack>
+    </s-section>
   );
 }

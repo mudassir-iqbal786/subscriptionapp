@@ -1,0 +1,21 @@
+api_version = "2026-01"
+
+[[extensions]]
+name = "t:name"
+handle = "subscription-delivery-customization"
+type = "function"
+uid = "05bdf23f-57f8-28c8-f56e-3a615be01db8c415ec8a"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.delivery-options.transform.run"
+  input_query = "src/cart_delivery_options_transform_run.graphql"
+  export = "cart-delivery-options-transform-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/delivery-customization/create"
+  details = "/delivery-customization/:id"

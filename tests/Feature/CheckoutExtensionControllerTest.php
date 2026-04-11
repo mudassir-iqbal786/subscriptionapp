@@ -21,12 +21,32 @@ class CheckoutExtensionControllerTest extends TestCase
             ->once()
             ->with($user, ['gid://shopify/ProductVariant/123'])
             ->andReturn([
-                [
-                    'id' => 'gid://shopify/ProductVariant/123',
-                    'title' => 'Coffee / Default Title',
-                    'shippingProfile' => [
-                        'id' => 'gid://shopify/DeliveryProfile/1',
+                'items' => [
+                    [
+                        'variantId' => 'gid://shopify/ProductVariant/123',
+                        'variantTitle' => 'Default Title',
+                        'productTitle' => 'Test product',
+                        'profileId' => 'gid://shopify/DeliveryProfile/1',
+                        'profileName' => 'Subscription Shipping',
+                    ],
+                ],
+                'profiles' => [
+                    [
+                        'profileId' => 'gid://shopify/DeliveryProfile/1',
                         'name' => 'Subscription Shipping',
+                        'shippingZones' => [
+                            [
+                                'zoneId' => 'gid://shopify/DeliveryZone/1',
+                                'name' => 'United States',
+                                'rates' => [
+                                    [
+                                        'handle' => 'gid://shopify/DeliveryMethodDefinition/1',
+                                        'price' => '5.00 USD',
+                                        'title' => 'Standard',
+                                    ],
+                                ],
+                            ],
+                        ],
                     ],
                 ],
             ]);
@@ -35,14 +55,17 @@ class CheckoutExtensionControllerTest extends TestCase
         $this->withoutMiddleware(VerifyShopify::class);
 
         $response = $this->actingAs($user)->postJson('/api/checkout/shipping-profiles', [
+            'checkoutId' => 'checkout-token-123',
             'variantIds' => ['gid://shopify/ProductVariant/123'],
         ]);
 
         $response
             ->assertOk()
             ->assertJsonPath('message', 'Checkout shipping profiles fetched successfully.')
-            ->assertJsonPath('profiles.0.id', 'gid://shopify/ProductVariant/123')
-            ->assertJsonPath('profiles.0.shippingProfile.name', 'Subscription Shipping');
+            ->assertJsonPath('checkoutId', 'checkout-token-123')
+            ->assertJsonPath('items.0.profileName', 'Subscription Shipping')
+            ->assertJsonPath('profiles.0.profileId', 'gid://shopify/DeliveryProfile/1')
+            ->assertJsonPath('profiles.0.shippingZones.0.rates.0.title', 'Standard');
     }
 
     public function test_it_validates_variant_ids_for_checkout_shipping_profiles(): void

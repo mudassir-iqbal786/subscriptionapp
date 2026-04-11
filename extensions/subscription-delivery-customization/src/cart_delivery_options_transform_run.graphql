@@ -1,0 +1,22 @@
+query CartDeliveryOptionsTransformRunInput {
+  deliveryCustomization {
+    metafield(namespace: "$app:subscription-delivery-customization", key: "function-configuration") {
+      jsonValue
+    }
+  }
+  cart {
+    lines {
+      sellingPlanAllocation {
+        sellingPlan {
+          id
+        }
+      }
+    }
+    deliveryGroups {
+      deliveryOptions {
+        handle
+        title
+      }
+    }
+  }
+}

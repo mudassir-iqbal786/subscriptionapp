@@ -17,7 +17,7 @@ class CheckoutExtensionController extends Controller
 
         Log::info('Fetching shipping profiles', ['request' => $request->all()]);
         try {
-            $profiles = $checkoutShippingProfileService->getProfilesForVariants(
+            $shippingProfileData = $checkoutShippingProfileService->getProfilesForVariants(
                 $request->user(),
                 $request->validated('variantIds')
             );
@@ -29,7 +29,9 @@ class CheckoutExtensionController extends Controller
 
         return response()->json([
             'message' => 'Checkout shipping profiles fetched successfully.',
-            'profiles' => $profiles,
+            'checkoutId' => (string) $request->validated('checkoutId', ''),
+            'items' => $shippingProfileData['items'],
+            'profiles' => $shippingProfileData['profiles'],
         ]);
     }
 }

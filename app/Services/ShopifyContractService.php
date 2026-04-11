@@ -40,6 +40,7 @@ query GetSubscriptionContracts($first: Int!) {
       updatedAt
       nextBillingDate
       customer {
+        id
         firstName
         lastName
         email
@@ -165,6 +166,7 @@ query GetSubscriptionContract($id: ID!) {
     updatedAt
     nextBillingDate
     customer {
+      id
       firstName
       lastName
       email
@@ -295,6 +297,7 @@ mutation CancelSubscriptionContract($subscriptionContractId: ID!) {
       updatedAt
       nextBillingDate
       customer {
+        id
         firstName
         lastName
         email
@@ -467,6 +470,7 @@ GRAPHQL,
             'id' => (string) data_get($contract, 'id', ''),
             'displayId' => $this->displayContractId((string) data_get($contract, 'id', '')),
             'customer' => [
+                'id' => (string) data_get($contract, 'customer.id', ''),
                 'name' => $this->customerName($contract),
                 'email' => (string) data_get($contract, 'customer.email', 'Unavailable'),
                 'addressLines' => $addressLines,
@@ -627,6 +631,7 @@ GRAPHQL,
             'id' => "imported-{$contract->handle}",
             'displayId' => $contract->handle,
             'customer' => [
+                'id' => '',
                 'name' => $contract->customer_name,
                 'email' => 'Imported by CSV',
                 'addressLines' => $addressLines !== [] ? $addressLines : ['Imported by CSV'],

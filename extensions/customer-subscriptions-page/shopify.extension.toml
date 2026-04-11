@@ -1,0 +1,18 @@
+# Learn more about configuring your Customer account UI extension:
+# https://shopify.dev/docs/api/customer-account-ui-extensions/latest/configuration
+
+api_version = "2026-01"
+uid = "3a63d951-f14f-23ca-ebcf-a2895a9a8cd68acd3b7c"
+
+[[extensions]]
+name = "customer-subscriptions-page"
+handle = "customer-subscriptions-page"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/CustomerSubscriptionsPage.jsx"
+target = "customer-account.page.render"
+
+[extensions.capabilities]
+api_access = true
+network_access = true
