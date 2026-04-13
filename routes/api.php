@@ -4,6 +4,7 @@ use App\Http\Controllers\CheckoutExtensionController;
 use App\Http\Controllers\CustomerAccountSubscriptionController;
 use App\Http\Controllers\DeliveryCustomizationController;
 use App\Http\Controllers\ShopifyContractController;
+use App\Http\Controllers\ShopifyMetaobjectController;
 use App\Http\Controllers\ShopifyProductSearchController;
 use App\Http\Controllers\SubscriptionPlanPageController;
 use App\Http\Controllers\SubscriptionSettingsController;
@@ -20,6 +21,7 @@ Route::middleware(['verify.shopify'])->group(function (): void {
     Route::get('/search-products', [ShopifyProductSearchController::class, 'search']);
     Route::post('/checkout/shipping-profiles', [CheckoutExtensionController::class, 'shippingProfiles']);
     Route::post('/customer-account/subscriptions', [CustomerAccountSubscriptionController::class, 'index']);
+    Route::post('/metaobjects/subscription', [ShopifyMetaobjectController::class, 'store']);
     Route::get('/delivery-customization', [DeliveryCustomizationController::class, 'show']);
     Route::put('/delivery-customization', [DeliveryCustomizationController::class, 'update']);
     Route::get('/contracts', [ShopifyContractController::class, 'index']);
