@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppAnchor, useAppNavigate } from '../navigation.jsx';
 import { createPlan, fetchPlans, plansQueryKey } from '../planQueries.js';
@@ -14,6 +14,10 @@ const initialOptions = [
         percentageOff: '',
     },
 ];
+
+function getInitialOptions() {
+    return initialOptions.map((option) => ({ ...option }));
+}
 
 function getSelectionSummary(products, productVariants) {
     const productCount = products.length;
@@ -53,6 +57,8 @@ function getProductThumbStyle(product) {
 export default function CreatePlanPage() {
     const navigateTo = useAppNavigate();
     const queryClient = useQueryClient();
+    const selectionFingerprintRef = useRef(null);
+    const hasMountedSelectionFingerprint = useRef(false);
     const [title, setTitle] = useState('');
     const [internalDescription, setInternalDescription] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -60,7 +66,7 @@ export default function CreatePlanPage() {
     const [isOpeningPicker, setIsOpeningPicker] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [selectedProductVariants, setSelectedProductVariants] = useState([]);
-    const [options, setOptions] = useState(initialOptions);
+    const [options, setOptions] = useState(() => getInitialOptions());
     const [discountType, setDiscountType] = useState('Percentage off');
     const [saveSuccess, setSaveSuccess] = useState('');
     const [lastAutoOpenedQuery, setLastAutoOpenedQuery] = useState('');
@@ -71,6 +77,10 @@ export default function CreatePlanPage() {
         deliveryOption ? `Deliver every ${deliveryOption.frequencyValue} ${deliveryOption.frequencyUnit.toLowerCase()}` : 'No delivery frequency selected',
         getSelectionSummary(selectedProducts, selectedProductVariants),
     ];
+    const selectionFingerprint = [
+        selectedProducts.map((product) => product.id).join(','),
+        selectedProductVariants.map((variant) => variant.id).join(','),
+    ].join('|');
 
     function addOption() {
         setOptions((currentOptions) => [
@@ -266,6 +276,16 @@ export default function CreatePlanPage() {
         };
     }, [isOpeningPicker, lastAutoOpenedQuery, searchTerm]);
 
+    useEffect(() => {
+        if (!hasMountedSelectionFingerprint.current) {
+            hasMountedSelectionFingerprint.current = true;
+
+            return;
+        }
+
+        selectionFingerprintRef.current?.dispatchEvent(new Event('change', { bubbles: true }));
+    }, [selectionFingerprint]);
+
     const savePlanMutation = useMutation({
         mutationFn: createPlan,
         onSuccess: async (response) => {
@@ -306,14 +326,47 @@ export default function CreatePlanPage() {
         });
     }
 
+    function resetCreatePlanForm() {
+        setTitle('');
+        setInternalDescription('');
+        setSearchTerm('');
+        setPickerError('');
+        setIsOpeningPicker(false);
+        setSelectedProducts([]);
+        setSelectedProductVariants([]);
+        setOptions(getInitialOptions());
+        setDiscountType('Percentage off');
+        setSaveSuccess('');
+        setLastAutoOpenedQuery('');
+        savePlanMutation.reset();
+    }
+
+    function handleDiscard() {
+        resetCreatePlanForm();
+    }
+
+    function handleSubmit(event) {
+        event.preventDefault();
+        void savePlan();
+    }
+
+    async function handleBackNavigation(event) {
+        event.preventDefault();
+
+        await window.shopify?.saveBar?.leaveConfirmation?.();
+        navigateTo('/plans');
+    }
+
     const saveError = savePlanMutation.error?.response?.data?.message ?? 'Unable to create the subscription plan.';
     const hasSaveError = savePlanMutation.isError;
     const isSaving = savePlanMutation.isPending;
 
     return (
-        <div className="plan-description-page">
+        <form className="plan-description-page" data-save-bar="" onReset={handleDiscard} onSubmit={handleSubmit}>
+            <input name="selectedProducts" readOnly ref={selectionFingerprintRef} type="hidden" value={selectionFingerprint} />
+
             <div className="plan-description-page__header">
-                <AppAnchor className="plan-description-page__back" to="/plans">
+                <AppAnchor className="plan-description-page__back" onClick={handleBackNavigation} to="/plans">
                     <span aria-hidden="true">&larr;</span>
                     <span>Create subscription plan</span>
                 </AppAnchor>
@@ -325,7 +378,7 @@ export default function CreatePlanPage() {
                         <div className="plan-description-card__section">
                             <label className="plan-field">
                                 <span>Title</span>
-                                <input onChange={(event) => setTitle(event.target.value)} type="text" value={title} />
+                                <input name="title" onChange={(event) => setTitle(event.target.value)} type="text" value={title} />
                             </label>
                             <p className="plan-field__hint">
                                 {storefrontNote} <AppAnchor to="/plans">storefront product pages</AppAnchor> that have subscriptions.
@@ -335,7 +388,7 @@ export default function CreatePlanPage() {
                         <div className="plan-description-card__section">
                             <label className="plan-field">
                                 <span>Internal description</span>
-                                <input onChange={(event) => setInternalDescription(event.target.value)} type="text" value={internalDescription} />
+                                <input name="internalDescription" onChange={(event) => setInternalDescription(event.target.value)} type="text" value={internalDescription} />
                             </label>
                             <p className="plan-field__hint">For your reference only</p>
                         </div>
@@ -350,6 +403,7 @@ export default function CreatePlanPage() {
                             <label className="plan-search-field">
                                 <span aria-hidden="true">Search</span>
                                 <input
+                                    name="productSearch"
                                     onChange={(event) => setSearchTerm(event.target.value)}
                                     onKeyDown={handleSearchKeyDown}
                                     placeholder="Search products"
@@ -413,7 +467,7 @@ export default function CreatePlanPage() {
                         <div className="plan-option-panel">
                             <label className="plan-field plan-field--row">
                                 <span>Discount type</span>
-                                <select onChange={(event) => setDiscountType(event.target.value)} value={discountType}>
+                                <select name="discountType" onChange={(event) => setDiscountType(event.target.value)} value={discountType}>
                                     <option value="Percentage off">Percentage off</option>
                                     <option value="Fixed amount off">Fixed amount off</option>
                                     <option value="No discount">No discount</option>
@@ -438,11 +492,13 @@ export default function CreatePlanPage() {
                                         <span>Delivery frequency</span>
                                         <div className="plan-field__inline">
                                             <input
+                                                name={`options[${option.id}][frequencyValue]`}
                                                 onChange={(event) => updateOption(option.id, 'frequencyValue', event.target.value)}
                                                 type="number"
                                                 value={option.frequencyValue}
                                             />
                                             <select
+                                                name={`options[${option.id}][frequencyUnit]`}
                                                 onChange={(event) => updateOption(option.id, 'frequencyUnit', event.target.value)}
                                                 value={option.frequencyUnit}
                                             >
@@ -458,6 +514,7 @@ export default function CreatePlanPage() {
                                         <span>{discountType === 'Fixed amount off' ? 'Fixed amount off' : 'Percentage off'}</span>
                                         <div className="plan-field__suffix">
                                             <input
+                                                name={`options[${option.id}][percentageOff]`}
                                                 onChange={(event) => updateOption(option.id, 'percentageOff', event.target.value)}
                                                 type="number"
                                                 value={option.percentageOff}
@@ -494,10 +551,10 @@ export default function CreatePlanPage() {
                     {hasSaveError ? <p className="plan-feedback plan-feedback--error">{saveError}</p> : null}
                     {saveSuccess ? <p className="plan-feedback plan-feedback--success">{saveSuccess}</p> : null}
                 </div>
-                <button className="plan-save-button" disabled={isSaving} onClick={savePlan} type="button">
+                <button className="plan-save-button" disabled={isSaving} type="submit">
                     {isSaving ? 'Saving...' : 'Save'}
                 </button>
             </div>
-        </div>
+        </form>
     );
 }

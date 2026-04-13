@@ -7,6 +7,9 @@ export const pageContent = {
     plans: {
         title: 'Plans',
     },
+    pra: {
+        title: 'Pra',
+    },
     planDescription: {
         title: 'Description',
         parentTitle: 'Plans',
@@ -61,6 +64,10 @@ export function getCurrentPage(pathname) {
 
     if (normalizedPath === '/plans') {
         return 'plans';
+    }
+
+    if (normalizedPath === '/pra') {
+        return 'pra';
     }
 
     if (normalizedPath.startsWith('/plans/description/')) {
