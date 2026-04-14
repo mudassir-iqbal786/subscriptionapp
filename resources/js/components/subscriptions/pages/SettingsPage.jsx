@@ -2,7 +2,42 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultSettings } from '../data.js';
 import { openShopifyCustomerNotificationsSettings, openShopifyThemeProductEditor } from '../navigation.jsx';
-import { fetchSettings, settingsQueryKey, updateSettings as persistSettings } from '../settingsQueries.js';
+
+const settingsQueryKey = ['subscription-settings'];
+
+async function fetchSettings() {
+    const response = await window.axios.get('/api/settings');
+
+    return normalizeSettings(response.data.settings ?? {});
+}
+
+async function persistSettings(payload) {
+    const response = await window.axios.put('/api/settings', payload);
+
+    return normalizeSettings(response.data.settings ?? {});
+}
+
+function normalizeSettings(settings = {}) {
+    const managementUrl = typeof settings.managementUrl === 'string' ? settings.managementUrl : defaultSettings.managementUrl;
+
+    return {
+        ...defaultSettings,
+        ...settings,
+        managementUrl,
+        paymentMethodFailure: {
+            ...defaultSettings.paymentMethodFailure,
+            ...(settings.paymentMethodFailure ?? {}),
+        },
+        inventoryFailure: {
+            ...defaultSettings.inventoryFailure,
+            ...(settings.inventoryFailure ?? {}),
+        },
+        setupProgress: {
+            ...defaultSettings.setupProgress,
+            ...(settings.setupProgress ?? {}),
+        },
+    };
+}
 
 const pageStyles = {
     layout: {

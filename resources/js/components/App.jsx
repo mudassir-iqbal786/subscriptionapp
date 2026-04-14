@@ -9,6 +9,7 @@ import PlanDescriptionPage from './subscriptions/pages/PlanDescriptionPage.jsx';
 import PlansPage from './subscriptions/pages/PlansPage.jsx';
 import SettingsPage from './subscriptions/pages/SettingsPage.jsx';
 import { AppAnchor, AppNavLink, buildAppPath, getCurrentPage, pageContent } from './subscriptions/navigation.jsx';
+import MetaObject from "@/components/subscriptions/pages/MetaObject.jsx";
 
 export default function App() {
     const location = useLocation();
@@ -21,6 +22,7 @@ export default function App() {
                 <AppNavLink to="/plans">Plans</AppNavLink>
                 <AppNavLink to="/contracts">Contracts</AppNavLink>
                 <AppNavLink to="/settings">Settings</AppNavLink>
+                <AppNavLink to="/metaobject">MetaObject</AppNavLink>
             </s-app-nav>
 
             <TitleBar title={currentPageContent.title}>
@@ -42,6 +44,7 @@ export default function App() {
                     <Route element={<ContractDetailPage />} path="/contracts/detail/:contractId" />
                     <Route element={<DeliveryCustomizationPage />} path="/delivery-customization/*" />
                     <Route element={<SettingsPage />} path="/settings" />
+                    <Route element={<MetaObject />} path="/metaobject" />
                     <Route element={<Navigate replace to={buildAppPath('/', location.search)} />} path="*" />
                 </Routes>
             </main>
