@@ -25,6 +25,15 @@ function formatCurrency(value, currencyCode = 'USD') {
     }).format(value);
 }
 
+function formatCompactCurrency(value, currencyCode = 'USD') {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+        notation: 'compact',
+        maximumFractionDigits: 1,
+    }).format(value);
+}
+
 function formatCompactDate(date) {
     return new Intl.DateTimeFormat('en-US', {
         month: 'short',
@@ -40,9 +49,57 @@ function formatLongDate(date) {
     }).format(date);
 }
 
+function formatDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
 function normalizeContractDate(value) {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function truncateChartLabel(value, maxLength) {
+    if (value.length <= maxLength) {
+        return value;
+    }
+
+    return `${value.slice(0, maxLength - 1)}...`;
+}
+
+function getPlanRevenueRows(contract) {
+    const lineItems = Array.isArray(contract.lineItems) ? contract.lineItems : [];
+    const rows = lineItems
+        .map((lineItem) => {
+            const planName = lineItem.sellingPlanName || lineItem.subtitle || contract.plan || contract.productTitle || 'Unassigned plan';
+            const revenue = Number(lineItem.totalValue ?? 0);
+
+            return {
+                planName,
+                revenue,
+            };
+        })
+        .filter((row) => row.planName !== '' && Number.isFinite(row.revenue) && row.revenue > 0);
+
+    if (rows.length > 0) {
+        return rows;
+    }
+
+    const fallbackRevenue = Number(contract.amountValue ?? 0);
+
+    if (!Number.isFinite(fallbackRevenue) || fallbackRevenue <= 0) {
+        return [];
+    }
+
+    return [
+        {
+            planName: contract.plan || contract.productTitle || 'Unassigned plan',
+            revenue: fallbackRevenue,
+        },
+    ];
 }
 
 function createRecentDayBuckets(totalDays) {
@@ -52,7 +109,7 @@ function createRecentDayBuckets(totalDays) {
         date.setDate(date.getDate() - (totalDays - index - 1));
 
         return {
-            isoKey: date.toISOString().slice(0, 10),
+            dateKey: formatDateKey(date),
             label: formatCompactDate(date),
             fullLabel: formatLongDate(date),
             value: 0,
@@ -99,6 +156,19 @@ export default function OverviewPage() {
     const [activeStepId, setActiveStepId] = useState('plan');
     const [lastRefreshAt, setLastRefreshAt] = useState(null);
     const [revenueRangeDays, setRevenueRangeDays] = useState(30);
+    const [isCompactChart, setIsCompactChart] = useState(false);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(max-width: 640px)');
+        const updateChartLayout = () => setIsCompactChart(mediaQuery.matches);
+
+        updateChartLayout();
+        mediaQuery.addEventListener('change', updateChartLayout);
+
+        return () => {
+            mediaQuery.removeEventListener('change', updateChartLayout);
+        };
+    }, []);
 
     useEffect(() => {
         const pusherAppKey = document.querySelector('meta[name="pusher-app-key"]')?.getAttribute('content') ?? '';
@@ -236,7 +306,7 @@ export default function OverviewPage() {
 
     const revenueTrendData = useMemo(() => {
         const dayBuckets = createRecentDayBuckets(revenueRangeDays);
-        const bucketMap = new Map(dayBuckets.map((bucket) => [bucket.isoKey, bucket]));
+        const bucketMap = new Map(dayBuckets.map((bucket) => [bucket.dateKey, bucket]));
 
         contracts.forEach((contract) => {
             const createdAt = normalizeContractDate(contract.createdAt);
@@ -245,8 +315,8 @@ export default function OverviewPage() {
                 return;
             }
 
-            const isoKey = createdAt.toISOString().slice(0, 10);
-            const bucket = bucketMap.get(isoKey);
+            const dateKey = formatDateKey(createdAt);
+            const bucket = bucketMap.get(dateKey);
 
             if (!bucket) {
                 return;
@@ -255,6 +325,10 @@ export default function OverviewPage() {
             bucket.value += contract.amountValue ?? 0;
             bucket.count += 1;
         });
+
+        if (!dayBuckets.some((bucket) => bucket.value > 0)) {
+            return [];
+        }
 
         return [
             {
@@ -272,27 +346,39 @@ export default function OverviewPage() {
 
     const planPerformanceData = useMemo(() => {
         const totalsByPlan = contracts.reduce((planTotals, contract) => {
-            const planName = contract.plan ?? contract.productTitle ?? 'Unassigned plan';
-            const currentValue = planTotals.get(planName) ?? 0;
+            getPlanRevenueRows(contract).forEach(({ planName, revenue }) => {
+                const currentValue = planTotals.get(planName) ?? 0;
 
-            planTotals.set(planName, currentValue + (contract.amountValue ?? 0));
+                planTotals.set(planName, currentValue + revenue);
+            });
 
             return planTotals;
         }, new Map());
 
+        const data = Array.from(totalsByPlan.entries())
+            .sort((left, right) => right[1] - left[1])
+            .map(([planName, totalRevenue]) => ({
+                key: planName,
+                value: Number(totalRevenue.toFixed(2)),
+            }));
+
+        if (data.length === 0) {
+            return [];
+        }
+
         return [
             {
                 name: 'Revenue by plan',
-                data: Array.from(totalsByPlan.entries())
-                    .sort((left, right) => right[1] - left[1])
-                    .slice(0, 5)
-                    .map(([planName, totalRevenue]) => ({
-                        key: planName,
-                        value: Number(totalRevenue.toFixed(2)),
-                    })),
+                data,
             },
         ];
     }, [contracts]);
+    const planPerformanceRowCount = planPerformanceData[0]?.data.length ?? 0;
+    const planPerformanceLabelLength = isCompactChart ? 14 : 24;
+    const planPerformanceChartHeight = Math.max(
+        isCompactChart ? 260 : 280,
+        (planPerformanceRowCount * (isCompactChart ? 58 : 48)) + 96,
+    );
 
     const statusBreakdownData = useMemo(() => {
         return ['Active', 'Paused', 'Canceled']
@@ -471,22 +557,36 @@ export default function OverviewPage() {
 
                     <div className="overview-chart-grid">
                         <article className="overview-chart-card overview-chart-card--wide">
-                            <div className="overview-chart-card__header">
-                                <div>
-                                    <h2>Revenue trend</h2>
-                                    <p>Daily subscription revenue from the last {revenueRangeDays} days.</p>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <s-select onChange={(event) => setRevenueRangeDays(Number(event.currentTarget.value))} value={String(revenueRangeDays)}>
-                                        {revenueRangeOptions.map((option) => (
-                                            <s-option key={option} value={String(option)}>
-                                                Last {option} days
-                                            </s-option>
-                                        ))}
-                                    </s-select>
-                                    <s-badge tone="success">Live</s-badge>
-                                </div>
-                            </div>
+                            <s-query-container className="overview-chart-card__header-query">
+                                <s-grid
+                                    alignItems="start"
+                                    className="overview-chart-card__header"
+                                    gap="base"
+                                    gridTemplateColumns="@container (inline-size > 420px) minmax(0, 1fr) auto, 1fr"
+                                >
+                                    <div>
+                                        <h2>Revenue trend</h2>
+                                        <p>Daily subscription revenue from the last {revenueRangeDays} days.</p>
+                                    </div>
+                                    <s-query-container className="overview-chart-card__actions-query">
+                                        <s-grid
+                                            alignItems="center"
+                                            className="overview-chart-card__actions"
+                                            gap="small-100"
+                                            gridTemplateColumns="@container (inline-size > 112px) auto auto, 1fr"
+                                        >
+                                            <s-select onChange={(event) => setRevenueRangeDays(Number(event.currentTarget.value))} value={String(revenueRangeDays)}>
+                                                {revenueRangeOptions.map((option) => (
+                                                    <s-option key={option} value={String(option)}>
+                                                        {option}d
+                                                    </s-option>
+                                                ))}
+                                            </s-select>
+                                            <s-badge tone="success">Live</s-badge>
+                                        </s-grid>
+                                    </s-query-container>
+                                </s-grid>
+                            </s-query-container>
 
                             <div className="overview-chart-frame overview-chart-frame--line">
                                 <LineChart
@@ -500,27 +600,38 @@ export default function OverviewPage() {
                                         labelFormatter: (value) => `${value}`,
                                     }}
                                     yAxisOptions={{
-                                        labelFormatter: (value) => formatCurrency(Number(value ?? 0), currencyCode),
+                                        labelFormatter: (value) => (
+                                            isCompactChart
+                                                ? formatCompactCurrency(Number(value ?? 0), currencyCode)
+                                                : formatCurrency(Number(value ?? 0), currencyCode)
+                                        ),
                                     }}
                                 />
                             </div>
                         </article>
 
                         <article className="overview-chart-card">
-                            <div className="overview-chart-card__header">
-                                <div>
-                                    <h2>Status mix</h2>
-                                    <p>Current contract distribution by lifecycle status.</p>
-                                </div>
-                                <s-badge tone="warning">{contracts.length} contracts</s-badge>
-                            </div>
+                            <s-query-container className="overview-chart-card__header-query">
+                                <s-grid
+                                    alignItems="start"
+                                    className="overview-chart-card__header"
+                                    gap="base"
+                                    gridTemplateColumns="@container (inline-size > 420px) minmax(0, 1fr) auto, 1fr"
+                                >
+                                    <div>
+                                        <h2>Status mix</h2>
+                                        <p>Current contract distribution by lifecycle status.</p>
+                                    </div>
+                                    <s-badge tone="warning">{contracts.length} contracts</s-badge>
+                                </s-grid>
+                            </s-query-container>
 
                             {statusBreakdownData.length > 0 ? (
                                 <div className="overview-chart-frame overview-chart-frame--donut">
                                     <DonutChart
                                         data={statusBreakdownData}
                                         isAnimated
-                                        legendPosition="right"
+                                        legendPosition={isCompactChart ? 'bottom' : 'right'}
                                         showLegend
                                         showLegendValues
                                         theme={overviewChartTheme}
@@ -532,15 +643,22 @@ export default function OverviewPage() {
                         </article>
 
                         <article className="overview-chart-card overview-chart-card--wide">
-                            <div className="overview-chart-card__header">
-                                <div>
-                                    <h2>Top plans by revenue</h2>
-                                    <p>Highest earning plans across all tracked contracts.</p>
-                                </div>
-                                <s-badge tone="success">Live</s-badge>
-                            </div>
+                            <s-query-container className="overview-chart-card__header-query">
+                                <s-grid
+                                    alignItems="start"
+                                    className="overview-chart-card__header"
+                                    gap="base"
+                                    gridTemplateColumns="@container (inline-size > 420px) minmax(0, 1fr) auto, 1fr"
+                                >
+                                    <div>
+                                        <s-heading>Plans by revenue</s-heading>
+                                        <s-paragraph>Revenue for every tracked subscription plan.</s-paragraph>
+                                    </div>
+                                    <s-badge tone="success">{planPerformanceRowCount} plans</s-badge>
+                                </s-grid>
+                            </s-query-container>
 
-                            <div className="overview-chart-frame overview-chart-frame--bar">
+                            <div className="overview-chart-frame overview-chart-frame--bar" style={{ height: `${planPerformanceChartHeight}px` }}>
                                 <BarChart
                                     data={planPerformanceData}
                                     direction="horizontal"
@@ -550,7 +668,14 @@ export default function OverviewPage() {
                                     state={chartState}
                                     theme={overviewChartTheme}
                                     xAxisOptions={{
-                                        labelFormatter: (value) => formatCurrency(Number(value ?? 0), currencyCode),
+                                        labelFormatter: (value) => (
+                                            isCompactChart
+                                                ? formatCompactCurrency(Number(value ?? 0), currencyCode)
+                                                : formatCurrency(Number(value ?? 0), currencyCode)
+                                        ),
+                                    }}
+                                    yAxisOptions={{
+                                        labelFormatter: (value) => truncateChartLabel(`${value ?? ''}`, planPerformanceLabelLength),
                                     }}
                                 />
                             </div>

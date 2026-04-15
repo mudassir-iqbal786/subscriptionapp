@@ -12,10 +12,24 @@ class ShopifyPlanServices
 {
     public function getPlans(User $shop, int $limit = 12): Collection
     {
+        return collect($this->getPlansPage($shop, $limit)['sellingPlanGroup']);
+    }
+
+    /**
+     * @return array{sellingPlanGroup: Collection<int, array<string, mixed>>, pagination: array{hasNextPage: bool, hasPreviousPage: bool, startCursor: ?string, endCursor: ?string}}
+     */
+    public function getPlansPage(User $shop, int $limit = 12, ?string $after = null, ?string $before = null): array
+    {
         $response = $shop->api()->graph(
             <<<'GRAPHQL'
-query GetSellingPlans($first: Int!, $query: String!) {
-  sellingPlanGroups(first: $first, query: $query) {
+query GetSellingPlans($first: Int, $last: Int, $after: String, $before: String, $query: String!) {
+  sellingPlanGroups(first: $first, last: $last, after: $after, before: $before, query: $query) {
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
     nodes {
       id
       appId
@@ -104,17 +118,21 @@ query GetSellingPlans($first: Int!, $query: String!) {
 }
 GRAPHQL,
             [
-                'first' => $limit,
+                'first' => $before === null ? $limit : null,
+                'last' => $before !== null ? $limit : null,
+                'after' => $after,
+                'before' => $before,
                 'query' => 'app_id:CURRENT category:SUBSCRIPTION',
             ]
         );
 
         //        dd($this->responseBody($response));
         $groups = data_get($this->responseBody($response), 'data.sellingPlanGroups.nodes', []);
+        $pageInfo = data_get($this->responseBody($response), 'data.sellingPlanGroups.pageInfo', []);
 
         //        dd($groups);
 
-        return collect($groups)
+        $plans = collect($groups)
             ->map(function ($group): array {
                 return [
                     'id' => $group['id'],
@@ -131,6 +149,16 @@ GRAPHQL,
                 ];
             })
             ->values();
+
+        return [
+            'sellingPlanGroup' => $plans,
+            'pagination' => [
+                'hasNextPage' => (bool) data_get($pageInfo, 'hasNextPage', false),
+                'hasPreviousPage' => (bool) data_get($pageInfo, 'hasPreviousPage', false),
+                'startCursor' => data_get($pageInfo, 'startCursor'),
+                'endCursor' => data_get($pageInfo, 'endCursor'),
+            ],
+        ];
     }
 
     /**

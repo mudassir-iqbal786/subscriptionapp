@@ -89,6 +89,7 @@ class ShopifyContractServiceTest extends TestCase
         $this->assertSame('Gift Card Product', $contract['lineItems'][0]['productTitle']);
         $this->assertSame('https://example.com/gift-card.png', $contract['lineItems'][0]['imageUrl']);
         $this->assertSame('$24.00', $contract['lineItems'][0]['unitPrice']);
+        $this->assertSame(40.0, $contract['lineItems'][0]['totalValue']);
         $this->assertSame('Subscription contract created', $contract['timeline'][0]['text']);
     }
 

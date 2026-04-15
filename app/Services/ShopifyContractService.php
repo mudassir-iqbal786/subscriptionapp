@@ -613,6 +613,8 @@ GRAPHQL,
                 'quantity' => (string) $quantity,
                 'unitPrice' => $this->formatMoney($price, $contract->currency_code),
                 'total' => $this->formatMoney($price * $quantity, $contract->currency_code),
+                'totalValue' => round($price * $quantity, 2),
+                'sellingPlanName' => (string) ($row['line_selling_plan_name'] ?? $contract->plan_name),
             ];
         })->all();
         $addressLines = collect([
@@ -721,6 +723,7 @@ GRAPHQL,
                     'unitPrice' => $this->formatMoney($unitPrice, $currencyCode),
                     'oneTimePurchasePrice' => $this->formatMoney($unitPrice * $quantity, $currencyCode),
                     'total' => $this->formatMoney($lineTotal, $currencyCode),
+                    'totalValue' => round($lineTotal, 2),
                     'sellingPlanId' => (string) data_get($line, 'sellingPlanId', ''),
                     'sellingPlanName' => (string) data_get($line, 'sellingPlanName', ''),
                 ];

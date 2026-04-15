@@ -2,11 +2,97 @@
 
 namespace Tests\Unit;
 
+use App\Models\User;
 use App\Services\ShopifyPlanServices;
+use Gnikyt\BasicShopifyAPI\BasicShopifyAPI;
+use Mockery;
+use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 
 class ShopifyPlanServicesTest extends TestCase
 {
+    use MockeryPHPUnitIntegration;
+
+    public function test_it_fetches_paginated_selling_plan_groups(): void
+    {
+        $api = Mockery::mock(BasicShopifyAPI::class);
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('api')->once()->andReturn($api);
+
+        $api->shouldReceive('graph')
+            ->once()
+            ->withArgs(function (string $query, array $variables): bool {
+                return str_contains($query, 'pageInfo')
+                    && $variables['first'] === 12
+                    && $variables['last'] === null
+                    && $variables['after'] === 'cursor-1'
+                    && $variables['before'] === null;
+            })
+            ->andReturn([
+                'body' => [
+                    'data' => [
+                        'sellingPlanGroups' => [
+                            'pageInfo' => [
+                                'hasNextPage' => true,
+                                'hasPreviousPage' => true,
+                                'startCursor' => 'cursor-2',
+                                'endCursor' => 'cursor-3',
+                            ],
+                            'nodes' => [
+                                [
+                                    'id' => 'gid://shopify/SellingPlanGroup/1',
+                                    'appId' => 'app-1',
+                                    'name' => 'Weekly subscription',
+                                    'options' => ['Delivery frequency'],
+                                    'products' => [
+                                        'nodes' => [
+                                            ['id' => 'gid://shopify/Product/1'],
+                                        ],
+                                    ],
+                                    'productVariants' => [
+                                        'nodes' => [],
+                                    ],
+                                    'sellingPlans' => [
+                                        'nodes' => [
+                                            [
+                                                'id' => 'gid://shopify/SellingPlan/1',
+                                                'createdAt' => '2026-04-14T00:00:00Z',
+                                                'name' => 'Weekly',
+                                                'description' => 'Weekly delivery',
+                                                'options' => ['Weekly'],
+                                                'billingPolicy' => [
+                                                    '__typename' => 'SellingPlanRecurringBillingPolicy',
+                                                    'interval' => 'WEEK',
+                                                    'intervalCount' => 1,
+                                                ],
+                                                'deliveryPolicy' => [
+                                                    '__typename' => 'SellingPlanRecurringDeliveryPolicy',
+                                                    'interval' => 'WEEK',
+                                                    'intervalCount' => 1,
+                                                ],
+                                                'pricingPolicies' => [],
+                                            ],
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $service = new ShopifyPlanServices;
+
+        $plansPage = $service->getPlansPage($user, 12, 'cursor-1');
+
+        $this->assertTrue($plansPage['pagination']['hasNextPage']);
+        $this->assertTrue($plansPage['pagination']['hasPreviousPage']);
+        $this->assertSame('cursor-2', $plansPage['pagination']['startCursor']);
+        $this->assertSame('cursor-3', $plansPage['pagination']['endCursor']);
+        $this->assertSame('gid://shopify/SellingPlanGroup/1', $plansPage['sellingPlanGroup'][0]['id']);
+        $this->assertSame(1, $plansPage['sellingPlanGroup'][0]['productCount']);
+    }
+
     public function test_map_plan_detail_includes_payment_delivery_and_pricing_policy_data(): void
     {
         $service = new ShopifyPlanServices;

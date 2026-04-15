@@ -35,8 +35,12 @@ class SubscriptionPlanPageController extends Controller
 
     public function getPlans(ShopifyPlanServices $shopifyPlanServices): JsonResponse
     {
+        $limit = min(max((int) request()->integer('limit', 12), 1), 50);
+        $after = request()->filled('after') ? (string) request()->input('after') : null;
+        $before = request()->filled('before') ? (string) request()->input('before') : null;
+
         try {
-            $getPlan = $shopifyPlanServices->getPlans(request()->user(), (int) request()->integer('limit', 12));
+            $plansPage = $shopifyPlanServices->getPlansPage(request()->user(), $limit, $after, $before);
         } catch (RuntimeException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
@@ -45,7 +49,8 @@ class SubscriptionPlanPageController extends Controller
 
         return response()->json([
             'message' => 'Plan Fetch successfully.',
-            'sellingPlanGroup' => $getPlan,
+            'sellingPlanGroup' => $plansPage['sellingPlanGroup'],
+            'pagination' => $plansPage['pagination'],
         ]);
     }
 

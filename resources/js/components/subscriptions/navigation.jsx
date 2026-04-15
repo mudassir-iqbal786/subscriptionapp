@@ -184,14 +184,25 @@ export function openShopifyThemeProductEditor(currentSearch = window.location.se
     return true;
 }
 
-export function openSubscriptionManagementSettings() {
+export function openSubscriptionManagementSettings(currentSearch = window.location.search) {
     const settingsUrl = getMetaContent('shopify-subscription-management-settings-url');
+    const shopDomain = getCurrentShopDomain(currentSearch);
+    const shopHandle = extractShopHandle(shopDomain);
 
     if (!settingsUrl) {
         return false;
     }
 
-    window.open(settingsUrl, '_top', 'noopener');
+    if (!shopHandle) {
+        window.open(settingsUrl, '_top', 'noopener');
+
+        return true;
+    }
+
+    const adminUrl = new URL(settingsUrl);
+    adminUrl.pathname = adminUrl.pathname.replace(/^\/store\/[^/]+/, `/store/${shopHandle}`);
+
+    window.open(adminUrl.toString(), '_top', 'noopener');
 
     return true;
 }

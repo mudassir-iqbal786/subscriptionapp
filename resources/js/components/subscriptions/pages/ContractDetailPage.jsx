@@ -298,9 +298,9 @@ export default function ContractDetailPage() {
                             <div>
                                 <div className="contract-detail-page__heading-row">
                                     <h3>{contract.displayId ?? contract.id}</h3>
-                                    <span className="contract-status-badge">
+                                    {/*<span className="contract-status-badge">*/}
                                         <s-badge tone={getStatusTone(contract.status)}>{contract.status}</s-badge>
-                                    </span>
+                                    {/*</span>*/}
                                 </div>
                                 <p>
                                     {contract.orderDate} &bull; Order {contract.orderNumber}

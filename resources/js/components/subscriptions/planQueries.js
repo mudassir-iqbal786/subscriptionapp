@@ -11,6 +11,24 @@ export async function fetchPlans() {
     return response.data.sellingPlanGroup ?? [];
 }
 
+export async function fetchPlansPage({ after = null, before = null, limit = 12 } = {}) {
+    const response = await window.axios.post('/api/getplans', {
+        after,
+        before,
+        limit,
+    });
+
+    return {
+        plans: response.data.sellingPlanGroup ?? [],
+        pagination: response.data.pagination ?? {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null,
+        },
+    };
+}
+
 export async function createPlan(payload) {
     const response = await window.axios.post('/api/create-plan', payload);
 

@@ -8,7 +8,8 @@ export default async () => {
 };
 
 function CustomerSubscriptionsPage() {
-  const appUrl = globalThis.process?.env?.APP_URL || 'https://46c2-2407-d000-704-d051-b9d8-66a0-ac3d-b8f5.ngrok-free.app';
+    console.log("app Url",globalThis.process?.env?.APP_URL);
+  const appUrl = globalThis.process?.env?.APP_URL || 'https://3562-2407-d000-704-d051-c5b6-5c41-b2e5-d278.ngrok-free.app';
   const customer = shopify.authenticatedAccount?.customer?.value || shopify.authenticatedAccount?.customer?.current;
   const customerId = typeof customer?.id === 'string' || typeof customer?.id === 'number' ? String(customer.id) : '';
   const [subscriptions, setSubscriptions] = useState([]);

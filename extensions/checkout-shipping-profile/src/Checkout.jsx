@@ -10,7 +10,7 @@ export default async () => {
 function Extension() {
   const lines = shopify.lines.value || [];
   const checkoutId = shopify.checkoutToken?.value || shopify.checkout?.value?.id || '';
-  const appUrl = globalThis.process?.env?.APP_URL || 'https://46c2-2407-d000-704-d051-b9d8-66a0-ac3d-b8f5.ngrok-free.app';
+  const appUrl = globalThis.process?.env?.APP_URL || 'https://3562-2407-d000-704-d051-c5b6-5c41-b2e5-d278.ngrok-free.app';
   const variantIds = useMemo(() => {
     return Array.from(
       new Set(

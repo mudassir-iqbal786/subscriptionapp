@@ -395,26 +395,27 @@ export default function CreatePlanPage() {
                     </section>
 
                     <section className="plan-description-card">
-                        <div className="plan-description-card__title-row">
-                            <h2>Products</h2>
-                        </div>
+                        {/*<div className="plan-description-card__title-row">*/}
+                        {/*    <h2>Products</h2>*/}
+                        {/*</div>*/}
 
                         <div className="plan-product-toolbar">
-                            <label className="plan-search-field">
-                                <span aria-hidden="true">Search</span>
-                                <input
-                                    name="productSearch"
-                                    onChange={(event) => setSearchTerm(event.target.value)}
-                                    onKeyDown={handleSearchKeyDown}
-                                    placeholder="Search products"
-                                    type="text"
-                                    value={searchTerm}
-                                />
-                            </label>
+                            <s-text-field
+                                icon="search"
+                                inlineSize="fill"
+                                label="Search products"
+                                labelAccessibilityVisibility="exclusive"
+                                name="productSearch"
+                                onInput={(event) => setSearchTerm(event.currentTarget.value)}
+                                onKeyDown={handleSearchKeyDown}
+                                placeholder="Search products"
+                                type="text"
+                                value={searchTerm}
+                            />
 
-                            <button className="plan-secondary-button" onClick={() => void openProductPicker()} type="button">
+                            <s-button className="" inlineSize="fill" onClick={() => void openProductPicker()} type="button">
                                 Browse
-                            </button>
+                            </s-button>
                         </div>
 
                         {pickerError ? <p className="plan-field__hint">{pickerError}</p> : null}
@@ -461,7 +462,7 @@ export default function CreatePlanPage() {
 
                     <section className="plan-description-card">
                         <div className="plan-description-card__title-row">
-                            <h2>Discount and frequency options</h2>
+                            <s-heading>Discount and frequency options</s-heading>
                         </div>
 
                         <div className="plan-option-panel">

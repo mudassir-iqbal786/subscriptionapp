@@ -83,6 +83,7 @@ export default function MetaObject() {
     const [isSaving, setIsSaving] = useState(false);
 
     function updateMetaobjectForm(nextForm) {
+        console.log("next Form ",nextForm)
         setMetaobjectForm(nextForm);
         setSaveMessage('');
         setSaveError('');
@@ -117,45 +118,45 @@ export default function MetaObject() {
             <div style={pageStyles.layout}>
                 <section style={pageStyles.card}>
                     <div>
-                        <h2 style={{ margin: 0 }}>Create metaobject</h2>
-                        <p style={{ ...pageStyles.message, color: '#6b7280', marginTop: '6px' }}>
+                        <s-heading style={{ margin: 0 }}>Create metaobject</s-heading>
+                        <s-paragraph style={{ ...pageStyles.message, color: '#6b7280', marginTop: '6px' }}>
                             Save one subscription metaobject in Shopify.
-                        </p>
+                        </s-paragraph>
                     </div>
 
                     <form onSubmit={createMetaobject} style={pageStyles.fieldGroup}>
-                        <label style={pageStyles.field}>
-                            <span style={pageStyles.label}>Title</span>
-                            <input
+                        <div style={pageStyles.field}>
+                            <s-text-field
+                                label="Title"
                                 onChange={(event) => updateMetaobjectForm({ ...metaobjectForm, title: event.target.value })}
                                 placeholder="VIP subscription"
                                 required
-                                style={pageStyles.input}
                                 type="text"
                                 value={metaobjectForm.title}
                             />
-                        </label>
+                        </div>
 
-                        <label style={pageStyles.field}>
-                            <span style={pageStyles.label}>Description</span>
-                            <textarea
+                        <div style={pageStyles.field}>
+                            <s-text-area
+                                label="Description"
                                 onChange={(event) => updateMetaobjectForm({ ...metaobjectForm, description: event.target.value })}
                                 placeholder="Created from the app"
+                                rows="5"
                                 style={pageStyles.textarea}
                                 value={metaobjectForm.description}
                             />
-                        </label>
+                        </div>
 
-                        <label style={pageStyles.field}>
-                            <span style={pageStyles.label}>Handle</span>
-                            <input
+                        <div style={pageStyles.field}>
+                            <s-text-field
+                                label="Handle"
                                 onChange={(event) => updateMetaobjectForm({ ...metaobjectForm, handle: event.target.value })}
                                 placeholder="vip-subscription"
                                 style={pageStyles.input}
                                 type="text"
                                 value={metaobjectForm.handle}
                             />
-                        </label>
+                        </div>
 
                         <div style={pageStyles.actions}>
                             <s-button disabled={isSaving} type="submit" variant="primary">

@@ -1,17 +1,36 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppNavigate } from '../navigation.jsx';
-import { fetchPlans, plansQueryKey } from '../planQueries.js';
+import { fetchPlansPage, plansQueryKey } from '../planQueries.js';
+
+const plansPageSize = 12;
 
 export default function PlansPage() {
     const navigateTo = useAppNavigate();
+    const tableRef = useRef(null);
     const [sortBy, setSortBy] = useState('create');
     const [sortDirection, setSortDirection] = useState('desc');
-    const { data: plans = [], error, isLoading } = useQuery({
-        queryKey: plansQueryKey,
-        queryFn: fetchPlans,
+    const [paginationCursor, setPaginationCursor] = useState({
+        after: null,
+        before: null,
+        page: 1,
+    });
+    const { data, error, isFetching, isLoading } = useQuery({
+        queryKey: [...plansQueryKey, 'page', paginationCursor.after, paginationCursor.before, plansPageSize],
+        queryFn: () => fetchPlansPage({
+            after: paginationCursor.after,
+            before: paginationCursor.before,
+            limit: plansPageSize,
+        }),
     });
 
+    const plans = data?.plans ?? [];
+    const pagination = data?.pagination ?? {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        startCursor: null,
+        endCursor: null,
+    };
     const searchError = error ? 'Unable to load Shopify plans right now.' : '';
     const sortedPlans = useMemo(() => {
         return [...plans].sort((leftPlan, rightPlan) => {
@@ -35,6 +54,64 @@ export default function PlansPage() {
             return normalizedRightValue - normalizedLeftValue;
         });
     }, [plans, sortBy, sortDirection]);
+
+    useEffect(() => {
+        const table = tableRef.current;
+
+        if (!table) {
+            return undefined;
+        }
+
+        function handleNextPage() {
+            if (!pagination.hasNextPage || pagination.endCursor === null) {
+                return;
+            }
+
+            setPaginationCursor((currentPaginationCursor) => ({
+                after: pagination.endCursor,
+                before: null,
+                page: currentPaginationCursor.page + 1,
+            }));
+        }
+
+        function handlePreviousPage() {
+            if (!pagination.hasPreviousPage || pagination.startCursor === null) {
+                return;
+            }
+
+            setPaginationCursor((currentPaginationCursor) => ({
+                after: null,
+                before: pagination.startCursor,
+                page: Math.max(1, currentPaginationCursor.page - 1),
+            }));
+        }
+
+        table.addEventListener('nextpage', handleNextPage);
+        table.addEventListener('previouspage', handlePreviousPage);
+
+        return () => {
+            table.removeEventListener('nextpage', handleNextPage);
+            table.removeEventListener('previouspage', handlePreviousPage);
+        };
+    }, [pagination.endCursor, pagination.hasNextPage, pagination.hasPreviousPage, pagination.startCursor]);
+
+    function updateSortBy(nextSortBy) {
+        setSortBy(nextSortBy);
+        setPaginationCursor({
+            after: null,
+            before: null,
+            page: 1,
+        });
+    }
+
+    function updateSortDirection(nextSortDirection) {
+        setSortDirection(nextSortDirection);
+        setPaginationCursor({
+            after: null,
+            before: null,
+            page: 1,
+        });
+    }
 
     function formatPricing(plan) {
         const firstPlan = plan.plans?.[0];
@@ -67,46 +144,53 @@ export default function PlansPage() {
             <div className="plans-page-topbar">
                 <h1>Subscription plans</h1>
 
-                <s-button className=""  variant="primary" onClick={() => navigateTo('/plans/create')} type="button">
+                <s-button className="" variant="primary" onClick={() => navigateTo('/plans/create')} type="button">
                     Create plan
                 </s-button>
             </div>
 
             <s-section padding="none">
-                <s-table>
+                <s-table
+                    hasNextPage={pagination.hasNextPage}
+                    hasPreviousPage={pagination.hasPreviousPage}
+                    loading={isFetching}
+                    paginate
+                    ref={tableRef}
+                >
                     <div slot="filters" className="polaris-table-filters">
                         <div className="polaris-table-filters__group">
                             <s-button variant="secondary">All</s-button>
+                            <s-text>Page {paginationCursor.page}</s-text>
                         </div>
 
                         {/*<s-button accessibilityLabel="Sort plans" variant="secondary">*/}
                         {/*    Sort*/}
                         {/*</s-button>*/}
 
-                        <s-button commandFor="organized-menu">Sort</s-button>
+                        <s-button commandFor="organized-menu" icon="sort">Sort</s-button>
 
                         <s-menu id="organized-menu" accessibilityLabel="Organized menu">
                             <s-section heading="Sort By">
                                 <s-button
                                     icon={sortBy === 'create' ? 'checkmark' : undefined}
                                     variant={sortBy === 'create' ? 'primary' : 'tertiary'}
-                                    onClick={() => setSortBy('create')}
+                                    onClick={() => updateSortBy('create')}
                                 >
                                     Created
                                 </s-button>
                                 <s-button
                                     icon={sortBy === 'update' ? 'checkmark' : undefined}
                                     variant={sortBy === 'update' ? 'primary' : 'tertiary'}
-                                    onClick={() => setSortBy('update')}
+                                    onClick={() => updateSortBy('update')}
                                 >
                                     Updated
                                 </s-button>
                             </s-section>
                             <s-section>
-                                <s-button icon="arrow-up" variant={sortDirection === 'asc' ? 'primary' : 'secondary'} onClick={() => setSortDirection('asc')}>
+                                <s-button icon="arrow-up" variant={sortDirection === 'asc' ? 'primary' : 'secondary'} onClick={() => updateSortDirection('asc')}>
                                     Oldest First
                                 </s-button>
-                                <s-button icon="arrow-down" variant={sortDirection === 'desc' ? 'primary' : 'secondary'} onClick={() => setSortDirection('desc')}>
+                                <s-button icon="arrow-down" variant={sortDirection === 'desc' ? 'primary' : 'secondary'} onClick={() => updateSortDirection('desc')}>
                                     Newest First
                                 </s-button>
                             </s-section>
@@ -132,6 +216,12 @@ export default function PlansPage() {
                         {searchError && !isLoading ? (
                             <s-table-row>
                                 <s-table-cell>{searchError}</s-table-cell>
+                            </s-table-row>
+                        ) : null}
+
+                        {!isLoading && !searchError && sortedPlans.length === 0 ? (
+                            <s-table-row>
+                                <s-table-cell>No subscription plans found.</s-table-cell>
                             </s-table-row>
                         ) : null}
 
