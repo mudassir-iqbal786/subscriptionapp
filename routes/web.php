@@ -15,6 +15,8 @@ Route::middleware(['verify.shopify'])->group(function (): void {
     Route::view('/contracts/detail/{contractId}', 'app')->where('contractId', '.*')->name('contracts.detail');
     Route::view('/delivery-customization/create', 'app')->name('delivery-customization.create');
     Route::view('/delivery-customization/{deliveryCustomizationId}', 'app')->where('deliveryCustomizationId', '.*')->name('delivery-customization.details');
+    Route::view('/subscription-discount/create', 'app')->name('subscription-discount.create');
+    Route::view('/subscription-discount/{discountId}', 'app')->where('discountId', '.*')->name('subscription-discount.details');
     Route::get('/contracts/stream', [ShopifyContractController::class, 'stream'])->name('contracts.stream');
     Route::post('/webhooks/shopify/contract-create', [ShopifyWebhookController::class, 'contractCreate']);
 

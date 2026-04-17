@@ -8,6 +8,7 @@ import OverviewPage from './subscriptions/pages/OverviewPage.jsx';
 import PlanDescriptionPage from './subscriptions/pages/PlanDescriptionPage.jsx';
 import PlansPage from './subscriptions/pages/PlansPage.jsx';
 import SettingsPage from './subscriptions/pages/SettingsPage.jsx';
+import SubscriptionDiscountPage from './subscriptions/pages/SubscriptionDiscountPage.jsx';
 import { AppAnchor, AppNavLink, buildAppPath, getCurrentPage, pageContent } from './subscriptions/navigation.jsx';
 import MetaObject from "@/components/subscriptions/pages/MetaObject.jsx";
 
@@ -22,6 +23,8 @@ export default function App() {
                 <AppNavLink to="/plans">Plans</AppNavLink>
                 <AppNavLink to="/contracts">Contracts</AppNavLink>
                 <AppNavLink to="/settings">Settings</AppNavLink>
+                <AppNavLink to="/subscription-discount/create">Discount</AppNavLink>
+                <AppNavLink to="/delivery-customization/create">Delivery Customization</AppNavLink>
                 <AppNavLink to="/metaobject">MetaObject</AppNavLink>
             </s-app-nav>
 
@@ -42,6 +45,8 @@ export default function App() {
                     <Route element={<PlanDescriptionPage />} path="/plans/description/:planId" />
                     <Route element={<ContractsPage />} path="/contracts" />
                     <Route element={<ContractDetailPage />} path="/contracts/detail/:contractId" />
+                    <Route element={<DeliveryCustomizationPage />} path="/delivery-customization/*" />
+                    <Route element={<SubscriptionDiscountPage />} path="/subscription-discount/*" />
                     <Route element={<DeliveryCustomizationPage />} path="/delivery-customization/*" />
                     <Route element={<SettingsPage />} path="/settings" />
                     <Route element={<MetaObject />} path="/metaobject" />

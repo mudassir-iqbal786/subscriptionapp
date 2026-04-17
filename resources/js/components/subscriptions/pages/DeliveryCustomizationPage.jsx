@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
     defaultDeliveryCustomization,
     deliveryCustomizationQueryKey,
     fetchDeliveryCustomization,
     saveDeliveryCustomization,
 } from '../deliveryCustomizationQueries.js';
-import { buildAppPath } from '../navigation.jsx';
 
 function splitList(value) {
     return value
@@ -34,16 +33,17 @@ function getDeliveryCustomizationId(params) {
     }
 }
 
+function showToast(message, options = {}) {
+    window.shopify?.toast?.show?.(message, options);
+}
+
 export default function DeliveryCustomizationPage() {
     const params = useParams();
-    const location = useLocation();
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const deliveryCustomizationId = getDeliveryCustomizationId(params);
     const [form, setForm] = useState(defaultDeliveryCustomization);
     const [titlesText, setTitlesText] = useState('');
     const [handlesText, setHandlesText] = useState('');
-    const [saveMessage, setSaveMessage] = useState('');
     const [saveError, setSaveError] = useState('');
     const { data: deliveryCustomization = defaultDeliveryCustomization, error, isLoading } = useQuery({
         queryKey: deliveryCustomizationQueryKey(deliveryCustomizationId),
@@ -58,15 +58,13 @@ export default function DeliveryCustomizationPage() {
             setTitlesText(joinList(savedDeliveryCustomization.hiddenDeliveryOptionTitles));
             setHandlesText(joinList(savedDeliveryCustomization.hiddenDeliveryOptionHandles));
             setSaveError('');
-            setSaveMessage('Delivery customization saved successfully.');
-
-            if (!deliveryCustomizationId && savedDeliveryCustomization.id) {
-                navigate(buildAppPath(`/delivery-customization/${encodeURIComponent(savedDeliveryCustomization.id)}`, location.search), { replace: true });
-            }
+            showToast('Delivery customization saved successfully.');
         },
         onError: (mutationError) => {
-            setSaveMessage('');
-            setSaveError(mutationError?.response?.data?.message ?? 'Unable to save the delivery customization right now.');
+            const message = mutationError?.response?.data?.message ?? 'Unable to save the delivery customization right now.';
+
+            setSaveError(message);
+            showToast(message, { isError: true });
         },
     });
 
@@ -81,7 +79,11 @@ export default function DeliveryCustomizationPage() {
             ...currentForm,
             [field]: value,
         }));
-        setSaveMessage('');
+        setSaveError('');
+    }
+
+    function updateListText(setter, value) {
+        setter(value);
         setSaveError('');
     }
 
@@ -104,77 +106,57 @@ export default function DeliveryCustomizationPage() {
             <div className="delivery-customization-page">
                 <section className="delivery-customization-hero">
                     <div>
-                        <span>Shopify Function</span>
+                        <s-text>Shopify Function</s-text>
                         <h1>Control shipping options for subscription carts</h1>
-                        <p>
+                        <s-text>
                             This page configures the delivery customization function. When checkout contains a subscription line, matching delivery
                             options are hidden before the customer chooses shipping.
-                        </p>
+                        </s-text>
                     </div>
-                    <div className={form.enabled ? 'delivery-customization-status is-enabled' : 'delivery-customization-status'}>
+                    <s-badge tone={form.enabled ? 'success' : 'warning'}>
                         {form.enabled ? 'Enabled' : 'Disabled'}
-                    </div>
+                    </s-badge>
                 </section>
 
-                {isLoading ? <p className="delivery-customization-feedback">Loading delivery customization...</p> : null}
-                {error && !isLoading ? <p className="delivery-customization-feedback is-error">{loadErrorMessage}</p> : null}
-                {saveMessage !== '' ? <p className="delivery-customization-feedback is-success">{saveMessage}</p> : null}
-                {saveError !== '' ? <p className="delivery-customization-feedback is-error">{saveError}</p> : null}
+                {isLoading ? <s-text>Loading delivery customization...</s-text> : null}
+                {error && !isLoading ? <s-text tone="critical">{loadErrorMessage}</s-text> : null}
+                {saveError !== '' ? <s-text tone="critical">{saveError}</s-text> : null}
 
                 <section className="delivery-customization-layout">
                     <aside className="delivery-customization-intro">
                         <h2>Function setup</h2>
-                        <p>Use exact delivery option titles or handles from checkout. Handles are safer because titles can change by language.</p>
+                        <s-text>Use exact delivery option titles or handles from checkout. Handles are safer because titles can change by language.</s-text>
                     </aside>
 
                     <div className="delivery-customization-card">
-                        <label className="delivery-customization-field">
-                            <span>Customization title</span>
-                            <input
-                                onChange={(event) => updateField('title', event.currentTarget.value)}
-                                type="text"
-                                value={form.title}
-                            />
-                        </label>
+                        <s-text-field
+                            label="Customization title"
+                            onInput={(event) => updateField('title', event.currentTarget.value)}
+                            type="text"
+                            value={form.title}
+                        />
 
-                        <label className="delivery-customization-toggle">
-                            <input
-                                checked={form.enabled}
-                                onChange={(event) => updateField('enabled', event.currentTarget.checked)}
-                                type="checkbox"
-                            />
-                            <span>Enable this delivery customization</span>
-                        </label>
+                        <s-checkbox checked={form.enabled} onChange={(event) => updateField('enabled', event.currentTarget.checked)}>
+                            Enable this delivery customization
+                        </s-checkbox>
 
-                        <label className="delivery-customization-field">
-                            <span>Hide delivery option titles</span>
-                            <textarea
-                                onChange={(event) => {
-                                    setTitlesText(event.currentTarget.value);
-                                    setSaveMessage('');
-                                    setSaveError('');
-                                }}
-                                placeholder={'Express\nFree International Shipping'}
-                                rows="5"
-                                value={titlesText}
-                            />
-                            <small>Enter one title per line, or separate titles with commas.</small>
-                        </label>
+                        <s-text-area
+                            label="Hide delivery option titles"
+                            onInput={(event) => updateListText(setTitlesText, event.currentTarget.value)}
+                            placeholder={'Express\nFree International Shipping'}
+                            rows="5"
+                            value={titlesText}
+                        />
+                        <s-text>Enter one title per line, or separate titles with commas.</s-text>
 
-                        <label className="delivery-customization-field">
-                            <span>Hide delivery option handles</span>
-                            <textarea
-                                onChange={(event) => {
-                                    setHandlesText(event.currentTarget.value);
-                                    setSaveMessage('');
-                                    setSaveError('');
-                                }}
-                                placeholder={'express\novernight'}
-                                rows="5"
-                                value={handlesText}
-                            />
-                            <small>Handles are the stable delivery option identifiers used by the function.</small>
-                        </label>
+                        <s-text-area
+                            label="Hide delivery option handles"
+                            onInput={(event) => updateListText(setHandlesText, event.currentTarget.value)}
+                            placeholder={'express\novernight'}
+                            rows="5"
+                            value={handlesText}
+                        />
+                        <s-text>Handles are the stable delivery option identifiers used by the function.</s-text>
 
                         <div className="delivery-customization-actions">
                             <s-button disabled={isLoading || saveMutation.isPending} onClick={saveSettings} variant="primary">
@@ -187,7 +169,7 @@ export default function DeliveryCustomizationPage() {
                 <section className="delivery-customization-layout">
                     <aside className="delivery-customization-intro">
                         <h2>Current function config</h2>
-                        <p>This is the JSON stored on the delivery customization metafield and read by Shopify Functions during checkout.</p>
+                        <s-text>This is the JSON stored on the delivery customization metafield and read by Shopify Functions during checkout.</s-text>
                     </aside>
 
                     <pre className="delivery-customization-code">

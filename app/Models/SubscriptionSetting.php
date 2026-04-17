@@ -24,6 +24,8 @@ class SubscriptionSetting extends Model
         'inventory_retry_days',
         'inventory_failed_action',
         'inventory_staff_notifications',
+        'subscription_discount_id',
+        'delivery_customization_id',
     ];
 
     /**

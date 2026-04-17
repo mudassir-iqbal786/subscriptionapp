@@ -12,9 +12,30 @@ class DeliveryCustomizationController extends Controller
 {
     public function show(Request $request, ShopifyDeliveryCustomizationService $service): JsonResponse
     {
-        $deliveryCustomizationId = (string) $request->query('deliveryCustomizationId', '');
+        $shop = $request->user();
+        $deliveryCustomizationId = (string) ($request->query('deliveryCustomizationId') ?: $shop?->subscriptionSetting?->delivery_customization_id ?: '');
 
         if ($deliveryCustomizationId === '') {
+            try {
+                $deliveryCustomization = $service->findExisting($shop);
+            } catch (RuntimeException) {
+                $deliveryCustomization = null;
+            }
+
+            if (is_array($deliveryCustomization)) {
+                $shop->subscriptionSetting()->updateOrCreate(
+                    [],
+                    [
+                        'delivery_customization_id' => $deliveryCustomization['id'],
+                    ]
+                );
+
+                return response()->json([
+                    'message' => 'Delivery customization fetched successfully.',
+                    'deliveryCustomization' => $deliveryCustomization,
+                ]);
+            }
+
             return response()->json([
                 'message' => 'Delivery customization defaults fetched successfully.',
                 'deliveryCustomization' => $service->defaultConfiguration(),
@@ -22,7 +43,7 @@ class DeliveryCustomizationController extends Controller
         }
 
         try {
-            $deliveryCustomization = $service->get($request->user(), $deliveryCustomizationId);
+            $deliveryCustomization = $service->get($shop, $deliveryCustomizationId);
         } catch (RuntimeException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
@@ -43,6 +64,15 @@ class DeliveryCustomizationController extends Controller
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 422);
+        }
+
+        if (($deliveryCustomization['id'] ?? '') !== '') {
+            $request->user()->subscriptionSetting()->updateOrCreate(
+                [],
+                [
+                    'delivery_customization_id' => $deliveryCustomization['id'],
+                ]
+            );
         }
 
         return response()->json([

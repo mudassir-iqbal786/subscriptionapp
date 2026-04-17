@@ -6,6 +6,7 @@ use App\Http\Controllers\DeliveryCustomizationController;
 use App\Http\Controllers\ShopifyContractController;
 use App\Http\Controllers\ShopifyMetaobjectController;
 use App\Http\Controllers\ShopifyProductSearchController;
+use App\Http\Controllers\SubscriptionDiscountController;
 use App\Http\Controllers\SubscriptionPlanPageController;
 use App\Http\Controllers\SubscriptionSettingsController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,8 @@ Route::middleware(['verify.shopify'])->group(function (): void {
     Route::post('/metaobjects/subscription', [ShopifyMetaobjectController::class, 'store']);
     Route::get('/delivery-customization', [DeliveryCustomizationController::class, 'show']);
     Route::put('/delivery-customization', [DeliveryCustomizationController::class, 'update']);
+    Route::get('/subscription-discount', [SubscriptionDiscountController::class, 'show']);
+    Route::put('/subscription-discount', [SubscriptionDiscountController::class, 'update']);
     Route::get('/contracts', [ShopifyContractController::class, 'index']);
     Route::post('/contracts/import', [ShopifyContractController::class, 'import']);
     Route::get('/contracts/{contractId}', [ShopifyContractController::class, 'show'])->where('contractId', '.*');

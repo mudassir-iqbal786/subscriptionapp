@@ -70,6 +70,43 @@ GRAPHQL,
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function findExisting(User $shop): ?array
+    {
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+query FindDeliveryCustomization($namespace: String!, $key: String!) {
+  deliveryCustomizations(first: 50) {
+    nodes {
+      id
+      title
+      enabled
+      metafield(namespace: $namespace, key: $key) {
+        value
+      }
+    }
+  }
+}
+GRAPHQL,
+            [
+                'namespace' => self::METAFIELD_NAMESPACE,
+                'key' => self::METAFIELD_KEY,
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $this->assertNoErrors($body);
+
+        $deliveryCustomization = collect(data_get($body, 'data.deliveryCustomizations.nodes', []))
+            ->first(function (mixed $node): bool {
+                return is_array($node) && (string) data_get($node, 'metafield.value', '') !== '';
+            });
+
+        return is_array($deliveryCustomization) ? $this->mapDeliveryCustomization($deliveryCustomization) : null;
+    }
+
+    /**
      * @param  array<string, mixed>  $configuration
      * @return array<string, mixed>
      */
@@ -78,6 +115,12 @@ GRAPHQL,
         $id = (string) ($configuration['id'] ?? '');
 
         if ($id === '') {
+            $existingDeliveryCustomization = $this->findExisting($shop);
+
+            if (is_array($existingDeliveryCustomization) && ($existingDeliveryCustomization['id'] ?? '') !== '') {
+                return $this->update($shop, $this->normalizeDeliveryCustomizationId((string) $existingDeliveryCustomization['id']), $configuration);
+            }
+
             return $this->create($shop, $configuration);
         }
 

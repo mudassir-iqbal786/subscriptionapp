@@ -36,6 +36,11 @@ export const pageContent = {
         parentTitle: 'Settings',
         parentHref: '/settings',
     },
+    subscriptionDiscount: {
+        title: 'Subscription discount',
+        parentTitle: 'Settings',
+        parentHref: '/settings',
+    },
 };
 
 const embeddedQueryKeys = ['embedded', 'host', 'locale', 'shop'];
@@ -92,6 +97,10 @@ export function getCurrentPage(pathname) {
 
     if (normalizedPath.startsWith('/delivery-customization')) {
         return 'deliveryCustomization';
+    }
+
+    if (normalizedPath.startsWith('/subscription-discount')) {
+        return 'subscriptionDiscount';
     }
 
     return 'home';

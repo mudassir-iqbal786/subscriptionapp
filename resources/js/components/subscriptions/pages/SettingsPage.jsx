@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { defaultSettings } from '../data.js';
-import { openShopifyCustomerNotificationsSettings, openShopifyThemeProductEditor } from '../navigation.jsx';
+import { openShopifyCustomerNotificationsSettings, openShopifyThemeProductEditor, useAppNavigate } from '../navigation.jsx';
 
 const settingsQueryKey = ['subscription-settings'];
 
@@ -163,6 +163,7 @@ function FieldHelp({ children }) {
 
 export default function SettingsPage() {
     const queryClient = useQueryClient();
+    const navigate = useAppNavigate();
     const { data: fetchedSettings = defaultSettings, error, isLoading } = useQuery({
         queryKey: settingsQueryKey,
         queryFn: fetchSettings,
@@ -250,6 +251,10 @@ export default function SettingsPage() {
         if (!didOpenThemeEditor) {
             setCopyMessage('Unable to open the theme editor for this shop.');
         }
+    }
+
+    function openSubscriptionDiscount() {
+        navigate('/subscription-discount/create');
     }
 
     return (
@@ -405,6 +410,22 @@ export default function SettingsPage() {
                         <div style={pageStyles.linkRow}>
                             <s-button onClick={openWidgetInstaller} variant="secondary">
                                 Re-install widget
+                            </s-button>
+                        </div>
+                    </div>
+                </section>
+
+                <section style={pageStyles.row}>
+                    <SectionIntro title="Subscription discount" />
+
+                    <div style={pageStyles.singleCard}>
+                        <p style={pageStyles.sectionHeading}>Reward subscription purchases</p>
+                        <p style={pageStyles.compactText}>
+                            Create an automatic Shopify Function discount for cart lines that contain a selling plan.
+                        </p>
+                        <div style={pageStyles.linkRow}>
+                            <s-button onClick={openSubscriptionDiscount} variant="secondary">
+                                Configure discount
                             </s-button>
                         </div>
                     </div>

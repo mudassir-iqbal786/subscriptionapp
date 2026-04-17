@@ -1,0 +1,33 @@
+{
+  "payload": {
+    "export": "cart-lines-discounts-generate-run",
+    "target": "cart.lines.discounts.generate.run",
+    "input": {
+      "cart": {
+        "lines": [
+          {
+            "id": "gid://shopify/CartLine/0",
+            "sellingPlanAllocation": {
+              "sellingPlan": {
+                "id": "gid://shopify/SellingPlan/1"
+              }
+            }
+          }
+        ]
+      },
+      "discount": {
+        "discountClasses": ["PRODUCT"],
+        "metafield": {
+          "jsonValue": {
+            "enabled": false,
+            "percentage": 15,
+            "message": "Subscribe and save"
+          }
+        }
+      }
+    },
+    "output": {
+      "operations": []
+    }
+  }
+}
