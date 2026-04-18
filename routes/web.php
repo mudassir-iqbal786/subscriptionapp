@@ -17,6 +17,8 @@ Route::middleware(['verify.shopify'])->group(function (): void {
     Route::view('/delivery-customization/{deliveryCustomizationId}', 'app')->where('deliveryCustomizationId', '.*')->name('delivery-customization.details');
     Route::view('/subscription-discount/create', 'app')->name('subscription-discount.create');
     Route::view('/subscription-discount/{discountId}', 'app')->where('discountId', '.*')->name('subscription-discount.details');
+    Route::view('/subscription-cart-validation/create', 'app')->name('subscription-cart-validation.create');
+    Route::view('/subscription-cart-validation/{validationId}', 'app')->where('validationId', '.*')->name('subscription-cart-validation.details');
     Route::get('/contracts/stream', [ShopifyContractController::class, 'stream'])->name('contracts.stream');
     Route::post('/webhooks/shopify/contract-create', [ShopifyWebhookController::class, 'contractCreate']);
 
@@ -45,3 +47,5 @@ Route::middleware(['verify.shopify'])->group(function (): void {
     })->name('subscriptions.redirect');
     Route::view('/settings', 'app')->name('settings');
 });
+
+Route::get('/get/catalog/product', [ShopifyWebhookController::class, 'getCatalogProduct']);

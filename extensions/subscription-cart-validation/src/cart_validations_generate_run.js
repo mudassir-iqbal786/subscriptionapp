@@ -55,16 +55,16 @@ export function cartValidationsGenerateRun(input) {
         });
     }
 
-    if (subscriptionQuantity < 3) {
+    if (subscriptionQuantity < 1) {
         errors.push({
             message: "Please add at least 3 subscription items to continue.",
             target: "$.cart",
         });
     }
 
-    if (subtotal < 50) {
+    if (subtotal < 20) {
         errors.push({
-            message: "Subscription orders must be at least $50.",
+            message: "Subscription orders must be at least $20.",
             target: "$.cart",
         });
     }
