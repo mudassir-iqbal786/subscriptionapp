@@ -2,11 +2,22 @@
 
 namespace Tests\Unit;
 
+use App\Models\User;
 use App\Services\ShopifyContractService;
+use Carbon\Carbon;
+use Gnikyt\BasicShopifyAPI\BasicShopifyAPI;
+use Mockery;
 use PHPUnit\Framework\TestCase;
 
 class ShopifyContractServiceTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        Mockery::close();
+
+        parent::tearDown();
+    }
+
     public function test_map_contract_includes_customer_financial_and_timeline_data(): void
     {
         $service = new ShopifyContractService;
@@ -139,5 +150,102 @@ class ShopifyContractServiceTest extends TestCase
             'gid://shopify/SubscriptionContract/26207453383',
             $service->normalizeContractId('gid://shopify/SubscriptionContract/26207453383')
         );
+    }
+
+    public function test_it_calculates_the_following_billing_date_from_the_billing_policy(): void
+    {
+        $service = new ShopifyContractService;
+
+        $date = $service->calculateFollowingBillingDate([
+            'nextBillingDate' => '2026-01-31T00:00:00Z',
+            'billingPolicy' => [
+                'interval' => 'MONTH',
+                'intervalCount' => 1,
+            ],
+        ]);
+
+        $this->assertSame('2026-02-28', $date?->toDateString());
+    }
+
+    public function test_it_creates_a_subscription_billing_attempt(): void
+    {
+        $api = Mockery::mock(BasicShopifyAPI::class);
+        $api->shouldReceive('graph')
+            ->once()
+            ->with(
+                Mockery::on(fn (string $query): bool => str_contains($query, 'subscriptionBillingAttemptCreate')),
+                [
+                    'subscriptionContractId' => 'gid://shopify/SubscriptionContract/123',
+                    'input' => [
+                        'idempotencyKey' => 'subscription-billing-test',
+                        'originTime' => '2026-04-20T00:00:00.000000Z',
+                    ],
+                ]
+            )
+            ->andReturn([
+                'body' => [
+                    'data' => [
+                        'subscriptionBillingAttemptCreate' => [
+                            'subscriptionBillingAttempt' => [
+                                'id' => 'gid://shopify/SubscriptionBillingAttempt/1',
+                                'ready' => false,
+                            ],
+                            'userErrors' => [],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $shop = Mockery::mock(User::class);
+        $shop->shouldReceive('api')->once()->andReturn($api);
+
+        $attempt = (new ShopifyContractService)->createBillingAttempt(
+            $shop,
+            '123',
+            'subscription-billing-test',
+            Carbon::parse('2026-04-20T00:00:00Z')
+        );
+
+        $this->assertSame('gid://shopify/SubscriptionBillingAttempt/1', $attempt['id']);
+        $this->assertFalse($attempt['ready']);
+    }
+
+    public function test_it_fetches_billable_subscription_contract_fields(): void
+    {
+        $api = Mockery::mock(BasicShopifyAPI::class);
+        $api->shouldReceive('graph')
+            ->once()
+            ->with(
+                Mockery::on(fn (string $query): bool => str_contains($query, 'GetBillableSubscriptionContracts')),
+                ['first' => 50]
+            )
+            ->andReturn([
+                'body' => [
+                    'data' => [
+                        'subscriptionContracts' => [
+                            'nodes' => [
+                                [
+                                    'id' => 'gid://shopify/SubscriptionContract/123',
+                                    'status' => 'ACTIVE',
+                                    'nextBillingDate' => '2026-04-20T00:00:00Z',
+                                    'billingPolicy' => [
+                                        'interval' => 'WEEK',
+                                        'intervalCount' => 2,
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+        $shop = Mockery::mock(User::class);
+        $shop->shouldReceive('api')->once()->andReturn($api);
+
+        $contracts = (new ShopifyContractService)->getBillableContracts($shop, 50);
+
+        $this->assertCount(1, $contracts);
+        $this->assertSame('Active', $contracts->first()['status']);
+        $this->assertSame('WEEK', $contracts->first()['billingPolicy']['interval']);
     }
 }

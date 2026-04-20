@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ImportedSubscriptionContract;
 use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -142,6 +143,55 @@ GRAPHQL,
         return collect(data_get($body, 'data.subscriptionContracts.nodes', []))
             ->filter(fn (mixed $contract): bool => is_array($contract))
             ->map(fn (array $contract): array => $this->mapContract($contract))
+            ->values();
+    }
+
+    public function getBillableContracts(User $shop, int $limit = 100): Collection
+    {
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+query GetBillableSubscriptionContracts($first: Int!) {
+  subscriptionContracts(first: $first, reverse: false) {
+    nodes {
+      id
+      status
+      nextBillingDate
+      billingPolicy {
+        interval
+        intervalCount
+      }
+      deliveryPolicy {
+        interval
+        intervalCount
+      }
+    }
+  }
+}
+GRAPHQL,
+            [
+                'first' => $limit,
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $this->assertNoErrors($body);
+
+        return collect(data_get($body, 'data.subscriptionContracts.nodes', []))
+            ->filter(fn (mixed $contract): bool => is_array($contract))
+            ->map(fn (array $contract): array => [
+                'id' => (string) data_get($contract, 'id', ''),
+                'status' => $this->displayStatus((string) data_get($contract, 'status', '')),
+                'nextBillingDate' => (string) data_get($contract, 'nextBillingDate', ''),
+                'billingPolicy' => [
+                    'interval' => (string) data_get($contract, 'billingPolicy.interval', ''),
+                    'intervalCount' => (int) data_get($contract, 'billingPolicy.intervalCount', 1),
+                ],
+                'deliveryPolicy' => [
+                    'interval' => (string) data_get($contract, 'deliveryPolicy.interval', ''),
+                    'intervalCount' => (int) data_get($contract, 'deliveryPolicy.intervalCount', 1),
+                ],
+            ])
+            ->filter(fn (array $contract): bool => $contract['id'] !== '')
             ->values();
     }
 
@@ -435,6 +485,146 @@ GRAPHQL,
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function createBillingAttempt(User $shop, string $contractId, string $idempotencyKey, ?CarbonInterface $originTime = null): array
+    {
+        $normalizedContractId = $this->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
+            throw new RuntimeException('A subscription contract ID is required to create a billing attempt.');
+        }
+
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+mutation CreateSubscriptionBillingAttempt($subscriptionContractId: ID!, $input: SubscriptionBillingAttemptInput!) {
+  subscriptionBillingAttemptCreate(
+    subscriptionContractId: $subscriptionContractId,
+    subscriptionBillingAttemptInput: $input
+  ) {
+    subscriptionBillingAttempt {
+      id
+      ready
+      errorMessage
+      order {
+        id
+        name
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+GRAPHQL,
+            [
+                'subscriptionContractId' => $normalizedContractId,
+                'input' => [
+                    'idempotencyKey' => $idempotencyKey,
+                    'originTime' => ($originTime ?? now())->toISOString(),
+                ],
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $payload = data_get($body, 'data.subscriptionBillingAttemptCreate');
+
+        if (! is_array($payload)) {
+            $this->assertNoErrors($body);
+
+            throw new RuntimeException('Shopify did not return a subscription billing attempt response.');
+        }
+
+        $this->assertNoMutationErrors($body, $payload);
+
+        $billingAttempt = data_get($payload, 'subscriptionBillingAttempt');
+
+        if (! is_array($billingAttempt)) {
+            throw new RuntimeException('Shopify did not return a subscription billing attempt.');
+        }
+
+        return $billingAttempt;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function setNextBillingDate(User $shop, string $contractId, CarbonInterface $date): ?array
+    {
+        $normalizedContractId = $this->normalizeContractId($contractId);
+
+        if ($normalizedContractId === '') {
+            throw new RuntimeException('A subscription contract ID is required to set the next billing date.');
+        }
+
+        $response = $shop->api()->graph(
+            <<<'GRAPHQL'
+mutation SetSubscriptionContractNextBillingDate($contractId: ID!, $date: DateTime!) {
+  subscriptionContractSetNextBillingDate(contractId: $contractId, date: $date) {
+    contract {
+      id
+      status
+      nextBillingDate
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+GRAPHQL,
+            [
+                'contractId' => $normalizedContractId,
+                'date' => $date->toISOString(),
+            ]
+        );
+
+        $body = $this->responseBody($response);
+        $payload = data_get($body, 'data.subscriptionContractSetNextBillingDate');
+
+        if (! is_array($payload)) {
+            $this->assertNoErrors($body);
+
+            throw new RuntimeException('Shopify did not return a next billing date response.');
+        }
+
+        $this->assertNoMutationErrors($body, $payload);
+
+        $contract = data_get($payload, 'contract');
+
+        return is_array($contract) ? $contract : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $contract
+     */
+    public function calculateFollowingBillingDate(array $contract): ?Carbon
+    {
+        $nextBillingDate = (string) data_get($contract, 'nextBillingDate', '');
+
+        if ($nextBillingDate === '') {
+            return null;
+        }
+
+        try {
+            $date = Carbon::parse($nextBillingDate);
+        } catch (Throwable) {
+            return null;
+        }
+
+        $intervalCount = max((int) data_get($contract, 'billingPolicy.intervalCount', data_get($contract, 'deliveryPolicy.intervalCount', 1)), 1);
+        $interval = Str::upper((string) data_get($contract, 'billingPolicy.interval', data_get($contract, 'deliveryPolicy.interval', 'MONTH')));
+
+        return match ($interval) {
+            'DAY' => $date->copy()->addDays($intervalCount),
+            'WEEK' => $date->copy()->addWeeks($intervalCount),
+            'YEAR' => $date->copy()->addYears($intervalCount),
+            default => $date->copy()->addMonthsNoOverflow($intervalCount),
+        };
+    }
+
+    /**
      * @param  array<string, mixed>  $contract
      * @return array<string, mixed>
      */
@@ -483,6 +673,14 @@ GRAPHQL,
             'amountValue' => round($grandTotal, 2),
             'currencyCode' => $currencyCode,
             'status' => $this->displayStatus((string) data_get($contract, 'status', '')),
+            'billingPolicy' => [
+                'interval' => (string) data_get($contract, 'billingPolicy.interval', ''),
+                'intervalCount' => (int) data_get($contract, 'billingPolicy.intervalCount', 1),
+            ],
+            'deliveryPolicy' => [
+                'interval' => (string) data_get($contract, 'deliveryPolicy.interval', ''),
+                'intervalCount' => (int) data_get($contract, 'deliveryPolicy.intervalCount', 1),
+            ],
             'deliveryFrequency' => $deliveryFrequency,
             'createdAt' => $createdAt,
             'orderDate' => $this->formatDate($originOrderCreatedAt),
@@ -792,6 +990,38 @@ GRAPHQL,
 
                 return (string) $error;
             })
+            ->filter()
+            ->values();
+
+        if ($messages->isNotEmpty()) {
+            throw new RuntimeException($this->normalizeShopifyErrorMessage($messages->implode(' ')));
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @param  array<string, mixed>  $payload
+     */
+    private function assertNoMutationErrors(array $body, array $payload): void
+    {
+        $messages = collect(data_get($body, 'errors', []))
+            ->map(function (mixed $error): string {
+                if (is_array($error)) {
+                    return (string) ($error['message'] ?? 'Unknown Shopify error.');
+                }
+
+                return (string) $error;
+            })
+            ->merge(
+                collect(data_get($payload, 'userErrors', []))
+                    ->map(function (mixed $error): string {
+                        if (is_array($error)) {
+                            return (string) ($error['message'] ?? 'Unknown Shopify validation error.');
+                        }
+
+                        return (string) $error;
+                    })
+            )
             ->filter()
             ->values();
 

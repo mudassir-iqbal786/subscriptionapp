@@ -25,6 +25,7 @@ class ShopifyWebhookController extends Controller
             $query = $request->input('query', 'dresses');
 
             $tokenResponse = Http::asJson()->post('https://api.shopify.com/auth/access_token', [
+
                 'grant_type' => 'client_credentials'
             ]);
 
